@@ -47,6 +47,9 @@ export function TechnicianProfilePage() {
   const [hasWorkedTogether, setHasWorkedTogether] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  const isClient = currentUser?.role === 'user';
+  const isTechnician = currentUser?.role === 'technician';
+
   useEffect(() => {
     const fetchTechnicianProfile = async () => {
       if (!id) {
@@ -135,8 +138,11 @@ export function TechnicianProfilePage() {
   }, [id, currentUser?.uid, currentUser?.role]);
 
   const openReviewForm = () => {
+    if (!isClient || !hasWorkedTogether) return;
+
     setActiveTab('reviews');
     setShowReviewForm(true);
+
     setTimeout(() => {
       document.getElementById('review-form')?.scrollIntoView({
         behavior: 'smooth',
@@ -162,7 +168,9 @@ export function TechnicianProfilePage() {
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!currentUser || !technician || !id || !hasWorkedTogether) return;
+    if (!currentUser || !isClient || !technician || !id || !hasWorkedTogether) {
+      return;
+    }
 
     if (
       newReview.rating === 0 ||
@@ -696,11 +704,20 @@ export function TechnicianProfilePage() {
                   </div>
                 </div>
 
-                {currentUser && currentUser.role === 'user' && !reviewSubmitted && (
+                {isClient && !reviewSubmitted && (
                   <button
-                    onClick={() => setShowReviewForm(!showReviewForm)}
-                    className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-maroon/30 rounded-xl text-maroon hover:bg-maroon-light transition-colors text-sm"
+                    onClick={() => {
+                      if (hasWorkedTogether) {
+                        setShowReviewForm(!showReviewForm);
+                      }
+                    }}
+                    className={`w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed rounded-xl text-sm transition-colors ${
+                      hasWorkedTogether
+                        ? 'border-maroon/30 text-maroon hover:bg-maroon-light'
+                        : 'border-muted text-muted-foreground cursor-not-allowed opacity-70'
+                    }`}
                     style={{ fontWeight: 500 }}
+                    disabled={!hasWorkedTogether}
                   >
                     <MessageSquare className="w-4 h-4" />
                     {hasWorkedTogether
@@ -718,7 +735,7 @@ export function TechnicianProfilePage() {
                   </div>
                 )}
 
-                {showReviewForm && (
+                {showReviewForm && isClient && hasWorkedTogether && (
                   <form
                     id="review-form"
                     onSubmit={handleSubmitReview}
@@ -808,6 +825,51 @@ export function TechnicianProfilePage() {
                       </button>
                     </div>
                   </form>
+                )}
+
+                {!currentUser && (
+                  <div className="bg-card border border-border rounded-xl p-5">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h3
+                          className="text-foreground text-sm mb-1"
+                          style={{ fontWeight: 600 }}
+                        >
+                          Sign in to review
+                        </h3>
+                        <p className="text-muted-foreground text-sm mb-3">
+                          Only registered clients can post reviews.
+                        </p>
+                        <Link
+                          to="/login"
+                          className="inline-flex items-center justify-center gap-2 border border-maroon text-maroon hover:bg-maroon-light px-4 py-2 rounded-lg text-sm transition-colors"
+                          style={{ fontWeight: 500 }}
+                        >
+                          Sign In
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {isTechnician && (
+                  <div className="bg-card border border-border rounded-xl p-5">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-gold flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h3
+                          className="text-foreground text-sm mb-1"
+                          style={{ fontWeight: 600 }}
+                        >
+                          Reviews are for clients only
+                        </h3>
+                        <p className="text-muted-foreground text-sm">
+                          Only registered clients can post reviews for professionals.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 )}
 
                 <div className="space-y-4">
@@ -907,7 +969,7 @@ export function TechnicianProfilePage() {
               )}
             </div>
 
-            {currentUser?.role === 'user' && (
+            {isClient && (
               <div className="bg-card border border-border rounded-xl p-5">
                 <h3 className="text-foreground mb-2" style={{ fontWeight: 600 }}>
                   Review this Professional
@@ -916,9 +978,7 @@ export function TechnicianProfilePage() {
                 {hasWorkedTogether ? (
                   <>
                     <p className="text-muted-foreground text-xs mb-3">
-                      You have a project with{' '}
-                      {technician.name.split(' ')[0]}. Share your experience to
-                      help others.
+                      You have a project with {technician.name.split(' ')[0]}. Share your experience to help others.
                     </p>
 
                     {reviewSubmitted ? (
@@ -942,15 +1002,13 @@ export function TechnicianProfilePage() {
                 ) : (
                   <>
                     <p className="text-muted-foreground text-xs mb-3">
-                      You can only review a professional after completing a
-                      project together on LabourX.
+                      Only clients who completed a project with this professional can post a review.
                     </p>
 
                     <div className="flex items-start gap-2 p-3 rounded-lg bg-gold-light border border-gold/20">
                       <AlertCircle className="w-4 h-4 text-gold flex-shrink-0 mt-0.5" />
                       <p className="text-xs text-muted-foreground">
-                        Post a job, select {technician.name.split(' ')[0]}'s
-                        bid, and complete the project to unlock reviews.
+                        Post a job, select {technician.name.split(' ')[0]}'s bid, and complete the project to unlock reviews.
                       </p>
                     </div>
 
@@ -973,7 +1031,7 @@ export function TechnicianProfilePage() {
                   Review this Professional
                 </h3>
                 <p className="text-muted-foreground text-xs mb-3">
-                  Sign in as a client and complete a project to leave a review.
+                  Only registered clients can post reviews.
                 </p>
                 <Link
                   to="/login"
@@ -982,6 +1040,17 @@ export function TechnicianProfilePage() {
                 >
                   Sign In to Review
                 </Link>
+              </div>
+            )}
+
+            {isTechnician && (
+              <div className="bg-card border border-border rounded-xl p-5">
+                <h3 className="text-foreground mb-2" style={{ fontWeight: 600 }}>
+                  Review this Professional
+                </h3>
+                <p className="text-muted-foreground text-xs">
+                  Only registered clients can post reviews for professionals.
+                </p>
               </div>
             )}
 
