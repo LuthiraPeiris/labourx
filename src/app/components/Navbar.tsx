@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Sun,
   Moon,
@@ -12,41 +12,57 @@ import {
   LayoutDashboard,
   PlusCircle,
   FolderOpen,
-} from 'lucide-react'
-import { useTheme } from '../context/ThemeContext'
-import { useAuth } from '../context/AuthContext'
+} from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 export function Navbar() {
-  const { theme, toggleTheme } = useTheme()
-  const { currentUser, logout, isAuthenticated } = useAuth()
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [profileOpen, setProfileOpen] = useState(false)
-  const navigate = useNavigate()
-  const location = useLocation()
+  const { theme, toggleTheme } = useTheme();
+  const { user, logout, loading } = useAuth();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const isAuthenticated = !!user;
+  const currentUser = user;
 
   useEffect(() => {
-    setMobileOpen(false)
-    setProfileOpen(false)
-  }, [location.pathname])
+    setMobileOpen(false);
+    setProfileOpen(false);
+  }, [location.pathname]);
 
-  const handleLogout = () => {
-    logout()
-    setProfileOpen(false)
-    setMobileOpen(false)
-    navigate('/')
-  }
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setProfileOpen(false);
+      setMobileOpen(false);
+      navigate('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
-  const isActive = (path: string) => location.pathname === path
+  const isActive = (path: string) => location.pathname === path;
 
   const navLinks = [
     { label: 'Home', path: '/' },
     { label: 'Find Professionals', path: '/search' },
     { label: 'Work Posts', path: '/posts' },
-  ]
+  ];
 
   const authNavLinks = isAuthenticated
     ? [{ label: 'My Projects', path: '/my-projects', icon: FolderOpen }]
-    : []
+    : [];
+
+  const displayName = currentUser?.name || 'User';
+  const firstName = displayName.split(' ')[0];
+  const avatarUrl =
+    currentUser?.photoURL ||
+    currentUser?.avatar ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(
+      displayName
+    )}&background=8B1A2F&color=fff`;
 
   return (
     <header className="sticky top-0 z-50 bg-card border-b border-border shadow-sm">
@@ -120,7 +136,7 @@ export function Navbar() {
               )}
             </button>
 
-            {isAuthenticated && currentUser ? (
+            {!loading && isAuthenticated && currentUser ? (
               <div className="relative hidden md:block">
                 <button
                   type="button"
@@ -128,23 +144,18 @@ export function Navbar() {
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
                 >
                   <img
-                    src={
-                      currentUser.avatar ||
-                      `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                        currentUser.name
-                      )}&background=8B1A2F&color=fff`
-                    }
-                    alt={currentUser.name}
+                    src={avatarUrl}
+                    alt={displayName}
                     className="w-7 h-7 rounded-full object-cover"
                     onError={(e) => {
-                      ;(e.target as HTMLImageElement).src =
+                      (e.target as HTMLImageElement).src =
                         `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                          currentUser.name
-                        )}&background=8B1A2F&color=fff`
+                          displayName
+                        )}&background=8B1A2F&color=fff`;
                     }}
                   />
                   <span className="text-sm text-foreground" style={{ fontWeight: 500 }}>
-                    {currentUser.name.split(' ')[0]}
+                    {firstName}
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
@@ -158,10 +169,10 @@ export function Navbar() {
                     <div className="absolute right-0 mt-2 w-52 bg-card border border-border rounded-xl shadow-xl z-20 overflow-hidden">
                       <div className="p-3 border-b border-border">
                         <p className="text-sm text-foreground" style={{ fontWeight: 600 }}>
-                          {currentUser.name}
+                          {displayName}
                         </p>
                         <p className="text-xs text-muted-foreground capitalize">
-                          {currentUser.role}
+                          {currentUser.role || 'user'}
                           {currentUser.specialty ? ` · ${currentUser.specialty}` : ''}
                         </p>
                       </div>
@@ -218,7 +229,7 @@ export function Navbar() {
                   </>
                 )}
               </div>
-            ) : (
+            ) : !loading ? (
               <div className="hidden md:flex items-center gap-2">
                 <Link
                   to="/login"
@@ -235,7 +246,7 @@ export function Navbar() {
                   Join Free
                 </Link>
               </div>
-            )}
+            ) : null}
 
             <button
               type="button"
@@ -270,6 +281,22 @@ export function Navbar() {
 
             {isAuthenticated && currentUser ? (
               <>
+                <div className="flex items-center gap-3 px-3 py-2 border-b border-border mb-2">
+                  <img
+                    src={avatarUrl}
+                    alt={displayName}
+                    className="w-9 h-9 rounded-full object-cover"
+                  />
+                  <div>
+                    <p className="text-sm text-foreground" style={{ fontWeight: 600 }}>
+                      {displayName}
+                    </p>
+                    <p className="text-xs text-muted-foreground capitalize">
+                      {currentUser.role || 'user'}
+                    </p>
+                  </div>
+                </div>
+
                 <Link
                   to="/my-projects"
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-muted"
@@ -317,7 +344,7 @@ export function Navbar() {
                   Sign Out
                 </button>
               </>
-            ) : (
+            ) : !loading ? (
               <div className="flex gap-2 pt-1">
                 <Link
                   to="/login"
@@ -336,10 +363,10 @@ export function Navbar() {
                   Join Free
                 </Link>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       )}
     </header>
-  )
+  );
 }

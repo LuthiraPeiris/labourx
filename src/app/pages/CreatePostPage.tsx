@@ -1,8 +1,15 @@
 import { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, FileText, MapPin, DollarSign, Clock, Tag, Image, CheckCircle, X } from 'lucide-react';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { SPECIALTIES } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { db, storage } from '../../firebase/config';
+
+const MAX_FILES = 5;
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
 
 export function CreatePostPage() {
   const { currentUser } = useAuth();
@@ -48,14 +55,126 @@ export function CreatePostPage() {
     );
   }
 
-  const update = (field: string, value: string) => setForm(f => ({ ...f, [field]: value }));
+  const update = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
+
+  const validateFiles = (files: File[]) => {
+    for (const file of files) {
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        alert(`"${file.name}" is not a supported image type. Please upload PNG or JPG files only.`);
+        return false;
+      }
+
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`"${file.name}" is too large. Maximum size is 10MB per image.`);
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const incoming = e.target.files ? Array.from(e.target.files) : [];
+
+    if (incoming.length === 0) return;
+
+    if (!validateFiles(incoming)) {
+      e.target.value = '';
+      return;
+    }
+
+    const remainingSlots = MAX_FILES - selectedFiles.length;
+
+    if (remainingSlots <= 0) {
+      alert(`You can upload a maximum of ${MAX_FILES} images.`);
+      e.target.value = '';
+      return;
+    }
+
+    const nextFiles = incoming.slice(0, remainingSlots);
+
+    setSelectedFiles((prev) => [...prev, ...nextFiles]);
+
+    if (incoming.length > remainingSlots) {
+      alert(`Only ${MAX_FILES} images are allowed. Extra files were ignored.`);
+    }
+
+    e.target.value = '';
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadImages = async () => {
+    if (selectedFiles.length === 0) return [];
+
+    const uploadPromises = selectedFiles.map(async (file, index) => {
+      const safeName = file.name.replace(/\s+/g, '-');
+      const fileRef = ref(
+        storage,
+        `posts/${currentUser.uid}/${Date.now()}-${index}-${safeName}`
+      );
+
+      await uploadBytes(fileRef, file);
+      return getDownloadURL(fileRef);
+    });
+
+    return Promise.all(uploadPromises);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setLoading(false);
-    setSubmitted(true);
+
+    if (Number(form.budgetMin) > Number(form.budgetMax)) {
+      alert('Minimum budget cannot be greater than maximum budget.');
+      return;
+    }
+
+    if (selectedFiles.length > MAX_FILES) {
+      alert(`You can upload a maximum of ${MAX_FILES} images.`);
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const imageUrls = await uploadImages();
+
+      await addDoc(collection(db, 'posts'), {
+        title: form.title.trim(),
+        description: form.description.trim(),
+        category: form.category,
+        location: `${form.location.trim()}, ${form.city.trim()}`,
+        area: form.location.trim(),
+        city: form.city.trim(),
+        budgetMin: Number(form.budgetMin),
+        budgetMax: Number(form.budgetMax),
+        timeline: form.timeline.trim(),
+        images: imageUrls,
+        status: 'open',
+        userId: currentUser.uid,
+        userName: currentUser.name,
+        userEmail: currentUser.email,
+        userCity: currentUser.city || form.city.trim(),
+        userAvatar: currentUser.avatar || currentUser.photoURL || '',
+        bids: [],
+        postedAt: new Date().toISOString(),
+        createdAt: serverTimestamp(),
+      });
+
+      setSubmitted(true);
+    } catch (error: any) {
+      console.error('Error creating post:', error);
+
+      if (error?.code?.includes('storage')) {
+        alert('Image upload failed. Please check Firebase Storage rules and try again.');
+      } else {
+        alert('Failed to publish post. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (submitted) {
@@ -77,23 +196,11 @@ export function CreatePostPage() {
     );
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files).slice(0, 5 - selectedFiles.length);
-      setSelectedFiles(prev => [...prev, ...newFiles].slice(0, 5));
-    }
-  };
-
-  const removeFile = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
   const inputClass = "w-full px-4 py-2.5 rounded-lg border border-border bg-input-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-maroon/30 focus:border-maroon transition-colors text-sm";
   const labelClass = "block text-sm text-foreground mb-1.5";
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <div className="bg-maroon py-8">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-white/70 hover:text-white text-sm mb-3 transition-colors" style={{ fontWeight: 500 }}>
@@ -106,7 +213,6 @@ export function CreatePostPage() {
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Basic Info */}
           <div className="bg-card border border-border rounded-xl p-6">
             <div className="flex items-center gap-2 mb-5">
               <FileText className="w-5 h-5 text-maroon" />
@@ -150,7 +256,6 @@ export function CreatePostPage() {
             </div>
           </div>
 
-          {/* Location */}
           <div className="bg-card border border-border rounded-xl p-6">
             <div className="flex items-center gap-2 mb-5">
               <MapPin className="w-5 h-5 text-maroon" />
@@ -182,7 +287,6 @@ export function CreatePostPage() {
             </div>
           </div>
 
-          {/* Budget & Timeline */}
           <div className="bg-card border border-border rounded-xl p-6">
             <div className="flex items-center gap-2 mb-5">
               <DollarSign className="w-5 h-5 text-gold" />
@@ -230,14 +334,12 @@ export function CreatePostPage() {
             </div>
           </div>
 
-          {/* Images (placeholder) */}
           <div className="bg-card border border-border rounded-xl p-6">
             <div className="flex items-center gap-2 mb-3">
               <Image className="w-5 h-5 text-maroon" />
               <h2 className="text-foreground" style={{ fontWeight: 600 }}>Reference Images (Optional)</h2>
             </div>
 
-            {/* Hidden file input */}
             <input
               ref={fileInputRef}
               type="file"
@@ -261,7 +363,6 @@ export function CreatePostPage() {
               <p className="text-xs text-muted-foreground mt-1">PNG, JPG up to 10MB each (max 5 images)</p>
             </div>
 
-            {/* Preview selected files */}
             {selectedFiles.length > 0 && (
               <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {selectedFiles.map((file, i) => (
@@ -285,7 +386,6 @@ export function CreatePostPage() {
             )}
           </div>
 
-          {/* Submit */}
           <div className="flex gap-3">
             <button
               type="submit"

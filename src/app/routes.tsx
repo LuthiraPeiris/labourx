@@ -1,8 +1,10 @@
 import { createBrowserRouter, Outlet } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
+import { ProtectedRoute } from './components/ProtectedRoute';
+
 import { HomePage } from './pages/HomePage';
-import { LoginPage } from './pages/LoginPage';
+import { LoginPage } from './pages/LogInPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { SearchPage } from './pages/SearchPage';
 import { TechnicianProfilePage } from './pages/TechnicianProfilePage';
@@ -28,35 +30,38 @@ function RootLayout() {
   );
 }
 
-function AuthLayout() {
-  return <Outlet />;
-}
-
 export const router = createBrowserRouter([
   {
     path: '/',
-    Component: RootLayout,
+    element: <RootLayout />,
     children: [
-      { index: true, Component: HomePage },
-      { path: 'search', Component: SearchPage },
-      { path: 'technician/:id', Component: TechnicianProfilePage },
-      { path: 'posts', Component: PostsPage },
-      { path: 'posts/create', Component: CreatePostPage },
-      { path: 'posts/:id', Component: PostDetailPage },
-      { path: 'posts/:id/edit', Component: EditPostPage },
-      { path: 'dashboard', Component: DashboardPage },
-      { path: 'profile', Component: ProfilePage },
-      { path: 'my-projects', Component: MyProjectsPage },
-      { path: 'nearby', Component: NearbyMapPage },
-      { path: '*', Component: NotFoundPage },
+      { index: true, element: <HomePage /> },
+      { path: 'search', element: <SearchPage /> },
+      { path: 'technician/:id', element: <TechnicianProfilePage /> },
+      { path: 'posts', element: <PostsPage /> },
+      { path: 'posts/create', element: <CreatePostPage /> },
+      { path: 'posts/:id', element: <PostDetailPage /> },
+      { path: 'posts/:id/edit', element: <EditPostPage /> },
+
+      {
+        element: <ProtectedRoute />,
+        children: [
+          { path: 'dashboard', element: <DashboardPage /> },
+          { path: 'profile', element: <ProfilePage /> },
+          { path: 'my-projects', element: <MyProjectsPage /> },
+          { path: 'nearby', element: <NearbyMapPage /> },
+        ],
+      },
+
+      { path: '*', element: <NotFoundPage /> },
     ],
   },
   {
     path: '/login',
-    Component: LoginPage,
+    element: <LoginPage />,
   },
   {
     path: '/register',
-    Component: RegisterPage,
+    element: <RegisterPage />,
   },
 ]);
