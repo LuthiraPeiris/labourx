@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   HardHat,
   User,
@@ -7,12 +7,18 @@ import {
   EyeOff,
   AlertCircle,
   Wrench,
-  ArrowLeft
+  ArrowLeft,
 } from 'lucide-react';
 
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase/config';
+
+type LocationState = {
+  from?: {
+    pathname?: string;
+  };
+};
 
 export function LoginPage() {
   const [role, setRole] = useState<'user' | 'technician'>('user');
@@ -23,13 +29,27 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // ✅ FIXED BACK BUTTON LOGIC
+  const from = (location.state as LocationState | null)?.from?.pathname;
+
   const handleBack = () => {
-    if (window.history.length > 1) {
+    // If login page was opened because of a redirect from another route,
+    // going back with -1 can create a loop.
+    // So first try to go to the original safe page if it exists.
+    if (from && from !== '/login') {
+      navigate(from, { replace: true });
+      return;
+    }
+
+    // React Router keeps the stack index here.
+    // This is more reliable than window.history.length.
+    const historyIndex = window.history.state?.idx;
+
+    if (typeof historyIndex === 'number' && historyIndex > 0) {
       navigate(-1);
     } else {
-      navigate('/');
+      navigate('/', { replace: true });
     }
   };
 
@@ -109,8 +129,6 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen bg-maroon-light flex items-center justify-center py-12 px-4">
-
-      {/* Back Button */}
       <button
         onClick={handleBack}
         className="absolute top-5 left-5 inline-flex items-center gap-1.5 text-maroon hover:text-maroon-dark transition-colors text-sm"
@@ -121,8 +139,6 @@ export function LoginPage() {
       </button>
 
       <div className="w-full max-w-md">
-
-        {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-4">
             <div className="w-10 h-10 bg-maroon rounded-xl flex items-center justify-center">
@@ -133,6 +149,7 @@ export function LoginPage() {
               <span className="text-gold font-bold text-xl">X</span>
             </div>
           </Link>
+
           <h1 className="text-foreground text-xl font-bold">Welcome Back</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Sign in to your account to continue
@@ -140,8 +157,6 @@ export function LoginPage() {
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-8 shadow-lg">
-
-          {/* Role Toggle */}
           <div className="flex rounded-xl border border-border overflow-hidden mb-6">
             <button
               type="button"
@@ -171,7 +186,6 @@ export function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-
             {error && (
               <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700">
                 <AlertCircle className="w-4 h-4" />
@@ -179,32 +193,26 @@ export function LoginPage() {
               </div>
             )}
 
-            {/* Email */}
             <div>
-              <label className="block text-sm mb-1.5 font-medium">
-                Email Address
-              </label>
+              <label className="block text-sm mb-1.5 font-medium">Email Address</label>
               <input
                 type="email"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 className="w-full px-4 py-2.5 rounded-lg border"
                 required
               />
             </div>
 
-            {/* Password */}
             <div>
-              <label className="block text-sm mb-1.5 font-medium">
-                Password
-              </label>
+              <label className="block text-sm mb-1.5 font-medium">Password</label>
 
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   className="w-full px-4 py-2.5 pr-10 rounded-lg border"
                   required
@@ -220,7 +228,6 @@ export function LoginPage() {
               </div>
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -231,12 +238,11 @@ export function LoginPage() {
           </form>
 
           <p className="text-center text-sm mt-5">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link to="/register" className="text-maroon">
               Create one
             </Link>
           </p>
-
         </div>
       </div>
     </div>
