@@ -19,10 +19,13 @@ export interface AuthUser {
   bio?: string;
   rating?: number;
   totalReviews?: number;
+  avatar?: string;
+  photoURL?: string;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
+  currentUser: AuthUser | null;
   loading: boolean;
   isAuthenticated: boolean;
   logout: () => Promise<void>;
@@ -30,6 +33,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  currentUser: null,
   loading: true,
   isAuthenticated: false,
   logout: async () => {},
@@ -41,6 +45,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true);
+
       try {
         if (!firebaseUser) {
           setUser(null);
@@ -54,11 +60,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (userSnap.exists()) {
           const data = userSnap.data();
 
-          setUser({
+          const mergedUser: AuthUser = {
             uid: firebaseUser.uid,
-            name: data.name || '',
+            name:
+              data.name ||
+              firebaseUser.displayName ||
+              firebaseUser.email?.split('@')[0] ||
+              'User',
             email: data.email || firebaseUser.email || '',
-            role: data.role as UserRole,
+            role: (data.role as UserRole) || 'user',
             phone: data.phone || '',
             city: data.city || '',
             specialty: data.specialty || '',
@@ -68,9 +78,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             bio: data.bio || '',
             rating: data.rating ?? 0,
             totalReviews: data.totalReviews ?? 0,
-          });
+            avatar: data.avatar || '',
+            photoURL: firebaseUser.photoURL || data.avatar || '',
+          };
+
+          setUser(mergedUser);
         } else {
-          setUser(null);
+          // Fallback user if Auth exists but Firestore doc is missing
+          const fallbackUser: AuthUser = {
+            uid: firebaseUser.uid,
+            name:
+              firebaseUser.displayName ||
+              firebaseUser.email?.split('@')[0] ||
+              'User',
+            email: firebaseUser.email || '',
+            role: 'user',
+            phone: '',
+            city: '',
+            specialty: '',
+            age: null,
+            address: '',
+            yearsExperience: 0,
+            bio: '',
+            rating: 0,
+            totalReviews: 0,
+            avatar: '',
+            photoURL: firebaseUser.photoURL || '',
+          };
+
+          console.warn(
+            'User exists in Firebase Auth but no Firestore profile document was found.'
+          );
+
+          setUser(fallbackUser);
         }
       } catch (error) {
         console.error('AuthContext error:', error);
@@ -84,14 +124,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = async () => {
-    await signOut(auth);
-    setUser(null);
+    try {
+      await signOut(auth);
+      setUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    }
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        currentUser: user, // compatibility for older components like Navbar
         loading,
         isAuthenticated: !!user,
         logout,
