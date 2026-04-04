@@ -25,13 +25,6 @@ const steps = [
   { icon: CheckCircle, title: 'Get Work Done', description: 'Choose the best professional, get your project executed, and leave a review to help the community.' },
 ];
 
-const stats = [
-  { value: '2,500+', label: 'Verified Professionals' },
-  { value: '15,000+', label: 'Projects Completed' },
-  { value: '50+', label: 'Cities Covered' },
-  { value: '4.8★', label: 'Average Rating' },
-];
-
 const testimonials = [
   {
     name: 'Nimasha Jayasinghe',
@@ -58,6 +51,10 @@ const testimonials = [
     project: 'Kitchen Renovation',
   },
 ];
+
+function formatCount(value: number) {
+  return `${value.toLocaleString()}+`;
+}
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -98,6 +95,78 @@ export function HomePage() {
 
     fetchHomepageData();
   }, []);
+
+  const homeStats = useMemo(() => {
+    const verifiedTechnicians = technicians.filter(
+      (tech: any) => Boolean(tech.isVerified)
+    );
+
+    const verifiedProfessionalsCount =
+      verifiedTechnicians.length > 0
+        ? verifiedTechnicians.length
+        : technicians.length;
+
+    const totalCompletedProjectsFromTechnicians = technicians.reduce(
+      (sum: number, tech: any) => sum + Number(tech.completedProjects || 0),
+      0
+    );
+
+    const closedPostsCount = workPosts.filter((post: any) => {
+      const status = String(post.status || '').toLowerCase();
+      return status === 'closed';
+    }).length;
+
+    const projectsCompletedCount =
+      totalCompletedProjectsFromTechnicians > 0
+        ? totalCompletedProjectsFromTechnicians
+        : closedPostsCount;
+
+    const uniqueCities = new Set(
+      technicians
+        .map((tech: any) =>
+          String(
+            tech.city ||
+              tech.locationText ||
+              tech.locationName ||
+              tech.location ||
+              ''
+          ).trim()
+        )
+        .filter((value: string) => value.length > 0)
+        .map((value: string) => value.toLowerCase())
+    );
+
+    const ratedTechnicians = technicians.filter(
+      (tech: any) => Number(tech.rating || 0) > 0
+    );
+
+    const averageRating =
+      ratedTechnicians.length > 0
+        ? ratedTechnicians.reduce(
+            (sum: number, tech: any) => sum + Number(tech.rating || 0),
+            0
+          ) / ratedTechnicians.length
+        : 0;
+
+    return [
+      {
+        value: formatCount(verifiedProfessionalsCount),
+        label: 'Verified Professionals',
+      },
+      {
+        value: formatCount(projectsCompletedCount),
+        label: 'Projects Completed',
+      },
+      {
+        value: formatCount(uniqueCities.size),
+        label: 'Cities Covered',
+      },
+      {
+        value: `${averageRating.toFixed(1)}★`,
+        label: 'Average Rating',
+      },
+    ];
+  }, [technicians, workPosts]);
 
   const featuredTechnicians = useMemo(() => {
     return [...technicians]
@@ -242,7 +311,7 @@ export function HomePage() {
       <section className="bg-maroon py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {stats.map((stat, i) => (
+            {homeStats.map((stat, i) => (
               <div key={i} className="text-center">
                 <div className="text-white" style={{ fontSize: '1.75rem', fontWeight: 700 }}>
                   {stat.value}
