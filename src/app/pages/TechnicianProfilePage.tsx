@@ -47,6 +47,9 @@ export function TechnicianProfilePage() {
   const [hasWorkedTogether, setHasWorkedTogether] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  const [shareMessage, setShareMessage] = useState('');
+  const [sharing, setSharing] = useState(false);
+
   const isClient = currentUser?.role === 'user';
   const isTechnician = currentUser?.role === 'technician';
 
@@ -76,58 +79,46 @@ export function TechnicianProfilePage() {
           return;
         }
 
-        const resolvedLocationText =
-          String(data.locationText || '').trim() ||
-          String(data.location || '').trim() ||
-          String(data.city || '').trim() ||
-          'Location not specified';
-
-        const resolvedHourlyRate =
-          String(data.hourlyRate || '').trim() ||
-          String(data.wage || '').trim() ||
-          String(data.wages || '').trim() ||
-          'Contact for pricing';
-
         const techData = {
-  id: techSnap.id,
-  name: data.name || 'Unknown Professional',
-  email: data.email || '',
-  phone: data.phone || '',
-  specialty: data.specialty || 'Professional',
-  location:
-    data.locationText ||
-    data.locationName ||
-    data.address ||
-    data.location ||
-    data.city ||
-    'Location not specified',
-  city: data.city || '',
-  avatar: data.avatar || data.photoURL || '',
-  role: data.role || 'technician',
-  bio: data.bio || 'No bio added yet.',
-  yearsExperience: Number(data.yearsExperience || 0),
-  rating: Number(data.rating || 0),
-  reviewCount: Number(data.totalReviews || data.reviewCount || 0),
-  skills: Array.isArray(data.skills) ? data.skills : [],
-  certifications: Array.isArray(data.certifications)
-    ? data.certifications
-    : [],
-  education: Array.isArray(data.education) ? data.education : [],
-  projects: Array.isArray(data.projects) ? data.projects : [],
-  reviews: Array.isArray(data.reviews) ? data.reviews : [],
-  availability: data.availability || 'Available',
-  hourlyRate:
-    data.hourlyRate ||
-    data.wages ||
-    data.wage ||
-    data.price ||
-    data.rate ||
-    'Contact for pricing',
-  completedProjects: Number(data.completedProjects || 0),
-  joinedAt: data.joinedAt || '',
-  isVerified: Boolean(data.isVerified || false),
-  website: data.website || '',
-};
+          id: techSnap.id,
+          name: data.name || 'Unknown Professional',
+          email: data.email || '',
+          phone: data.phone || '',
+          specialty: data.specialty || 'Professional',
+          location:
+            data.locationText ||
+            data.locationName ||
+            data.address ||
+            data.location ||
+            data.city ||
+            'Location not specified',
+          city: data.city || '',
+          avatar: data.avatar || data.photoURL || '',
+          role: data.role || 'technician',
+          bio: data.bio || 'No bio added yet.',
+          yearsExperience: Number(data.yearsExperience || 0),
+          rating: Number(data.rating || 0),
+          reviewCount: Number(data.totalReviews || data.reviewCount || 0),
+          skills: Array.isArray(data.skills) ? data.skills : [],
+          certifications: Array.isArray(data.certifications)
+            ? data.certifications
+            : [],
+          education: Array.isArray(data.education) ? data.education : [],
+          projects: Array.isArray(data.projects) ? data.projects : [],
+          reviews: Array.isArray(data.reviews) ? data.reviews : [],
+          availability: data.availability || 'Available',
+          hourlyRate:
+            data.hourlyRate ||
+            data.wages ||
+            data.wage ||
+            data.price ||
+            data.rate ||
+            'Contact for pricing',
+          completedProjects: Number(data.completedProjects || 0),
+          joinedAt: data.joinedAt || '',
+          isVerified: Boolean(data.isVerified || false),
+          website: data.website || '',
+        };
 
         setTechnician(techData);
 
@@ -160,6 +151,62 @@ export function TechnicianProfilePage() {
 
     fetchTechnicianProfile();
   }, [id, currentUser?.uid, currentUser?.role]);
+
+  useEffect(() => {
+    if (!shareMessage) return;
+
+    const timer = setTimeout(() => {
+      setShareMessage('');
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [shareMessage]);
+
+  const handleShareProfile = async () => {
+    if (!technician || !id) return;
+
+    try {
+      setSharing(true);
+
+      const shareUrl = `${window.location.origin}/technician/${id}`;
+      const shareTitle = `${technician.name} - ${technician.specialty}`;
+      const shareText = `Check out ${technician.name}'s professional profile on LabourX.`;
+
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: shareTitle,
+            text: shareText,
+            url: shareUrl,
+          });
+          setShareMessage('Profile shared successfully');
+          return;
+        } catch (shareError: any) {
+          if (shareError?.name === 'AbortError') {
+            return;
+          }
+        }
+      }
+
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareMessage('Profile link copied');
+      } else {
+        const tempInput = document.createElement('input');
+        tempInput.value = shareUrl;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        setShareMessage('Profile link copied');
+      }
+    } catch (error) {
+      console.error('Error sharing profile:', error);
+      setShareMessage('Unable to share profile');
+    } finally {
+      setSharing(false);
+    }
+  };
 
   const openReviewForm = () => {
     if (!isClient || !hasWorkedTogether) return;
@@ -394,12 +441,22 @@ export function TechnicianProfilePage() {
                   <span>({technician.reviewCount} reviews)</span>
                 </div>
               </div>
+
+              {shareMessage && (
+                <div className="mt-3 inline-flex items-center rounded-lg bg-white/15 border border-white/20 px-3 py-1.5 text-xs text-white">
+                  {shareMessage}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2 self-start">
               <button
                 type="button"
-                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-colors"
+                onClick={handleShareProfile}
+                disabled={sharing}
+                title="Share profile"
+                aria-label="Share profile"
+                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <Share2 className="w-4 h-4" />
               </button>
