@@ -228,9 +228,8 @@ function TechnicianDashboard({ user }: { user: AppUser }) {
         value: Number(dashboardUser.rating || 0).toFixed(1),
         subtext:
           Number(dashboardUser.totalReviews || 0) > 0
-            ? `${dashboardUser.totalReviews} review${
-                Number(dashboardUser.totalReviews) === 1 ? '' : 's'
-              } received`
+            ? `${dashboardUser.totalReviews} review${Number(dashboardUser.totalReviews) === 1 ? '' : 's'
+            } received`
             : 'No reviews yet',
         color: 'text-amber-500',
         bg: 'bg-amber-50',
@@ -279,8 +278,8 @@ function TechnicianDashboard({ user }: { user: AppUser }) {
     profileCompletion >= 100
       ? 'Your profile looks complete'
       : profileCompletion >= 70
-      ? 'Almost there'
-      : 'Complete more profile details';
+        ? 'Almost there'
+        : 'Complete more profile details';
 
   return (
     <div className="min-h-screen bg-background">
@@ -372,28 +371,27 @@ function TechnicianDashboard({ user }: { user: AppUser }) {
               </div>
             </div>
 
-            <div className="bg-white rounded-3xl border border-border shadow-sm p-6">
+            <div className="rounded-3xl border border-border bg-card shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-foreground font-semibold">Profile Strength</h3>
-                <span className="text-maroon font-bold">{profileCompletion}%</span>
+                <h3 className="font-semibold text-foreground">Profile Strength</h3>
+                <span className="font-bold text-maroon">{profileCompletion}%</span>
               </div>
 
-              <div className="h-3 bg-muted rounded-full overflow-hidden mb-3">
+              <div className="h-3 rounded-full overflow-hidden bg-muted mb-3">
                 <div
-                  className="h-full bg-gradient-to-r from-maroon to-gold rounded-full transition-all"
+                  className="h-full rounded-full bg-gradient-to-r from-maroon to-gold transition-all"
                   style={{ width: `${profileCompletion}%` }}
                 />
               </div>
 
-              <p className="text-sm text-muted-foreground mb-4">{completionText}</p>
+              <p className="mb-4 text-sm text-muted-foreground">{completionText}</p>
 
               <div className="space-y-3">
                 {checklist.map((item, i) => (
                   <div key={i} className="flex items-center gap-3 text-sm">
                     <CheckCircle
-                      className={`w-4 h-4 flex-shrink-0 ${
-                        item.done ? 'text-green-500' : 'text-muted-foreground'
-                      }`}
+                      className={`w-4 h-4 flex-shrink-0 ${item.done ? 'text-green-500' : 'text-muted-foreground'
+                        }`}
                     />
                     <span className={item.done ? 'text-foreground' : 'text-muted-foreground'}>
                       {item.label}
@@ -404,7 +402,7 @@ function TechnicianDashboard({ user }: { user: AppUser }) {
 
               <Link
                 to="/profile"
-                className="mt-5 w-full inline-flex items-center justify-center gap-2 border border-maroon text-maroon hover:bg-maroon hover:text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-maroon py-2.5 text-sm font-semibold text-maroon transition-colors hover:bg-maroon hover:text-white"
               >
                 <Edit className="w-4 h-4" />
                 Complete Profile
@@ -598,11 +596,10 @@ function TechnicianDashboard({ user }: { user: AppUser }) {
                           {Array.from({ length: 5 }).map((_, idx) => (
                             <Star
                               key={idx}
-                              className={`w-4 h-4 ${
-                                idx < Number(review.rating || 0)
-                                  ? 'fill-amber-500 text-amber-500'
-                                  : 'text-gray-300'
-                              }`}
+                              className={`w-4 h-4 ${idx < Number(review.rating || 0)
+                                ? 'fill-amber-500 text-amber-500'
+                                : 'text-gray-300'
+                                }`}
                             />
                           ))}
                         </div>
@@ -851,8 +848,8 @@ function UserDashboard({ user }: { user: AppUser }) {
     profileCompletion >= 100
       ? 'Your profile looks complete'
       : profileCompletion >= 70
-      ? 'Almost there'
-      : 'Complete more profile details';
+        ? 'Almost there'
+        : 'Complete more profile details';
 
   return (
     <div className="min-h-screen bg-background">
@@ -931,28 +928,27 @@ function UserDashboard({ user }: { user: AppUser }) {
               </div>
             </div>
 
-            <div className="bg-white rounded-3xl border border-border shadow-sm p-6">
+            <div className="rounded-3xl border border-border bg-card shadow-sm p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-foreground font-semibold">Profile Strength</h3>
-                <span className="text-maroon font-bold">{profileCompletion}%</span>
+                <h3 className="font-semibold text-foreground">Profile Strength</h3>
+                <span className="font-bold text-maroon">{profileCompletion}%</span>
               </div>
 
-              <div className="h-3 bg-muted rounded-full overflow-hidden mb-3">
+              <div className="h-3 rounded-full overflow-hidden bg-muted mb-3">
                 <div
-                  className="h-full bg-gradient-to-r from-maroon to-gold rounded-full transition-all"
+                  className="h-full rounded-full bg-gradient-to-r from-maroon to-gold transition-all"
                   style={{ width: `${profileCompletion}%` }}
                 />
               </div>
 
-              <p className="text-sm text-muted-foreground mb-4">{completionText}</p>
+              <p className="mb-4 text-sm text-muted-foreground">{completionText}</p>
 
               <div className="space-y-3">
                 {checklist.map((item, i) => (
                   <div key={i} className="flex items-center gap-3 text-sm">
                     <CheckCircle
-                      className={`w-4 h-4 flex-shrink-0 ${
-                        item.done ? 'text-green-500' : 'text-muted-foreground'
-                      }`}
+                      className={`w-4 h-4 flex-shrink-0 ${item.done ? 'text-green-500' : 'text-muted-foreground'
+                        }`}
                     />
                     <span className={item.done ? 'text-foreground' : 'text-muted-foreground'}>
                       {item.label}
@@ -963,7 +959,7 @@ function UserDashboard({ user }: { user: AppUser }) {
 
               <Link
                 to="/profile"
-                className="mt-5 w-full inline-flex items-center justify-center gap-2 border border-maroon text-maroon hover:bg-maroon hover:text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-maroon py-2.5 text-sm font-semibold text-maroon transition-colors hover:bg-maroon hover:text-white"
               >
                 <Edit className="w-4 h-4" />
                 Complete Profile
@@ -1072,13 +1068,12 @@ function UserDashboard({ user }: { user: AppUser }) {
                               {post.title}
                             </h3>
                             <span
-                              className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                                post.status === 'open'
-                                  ? 'bg-green-100 text-green-700'
-                                  : post.status === 'in-progress'
+                              className={`text-xs px-2.5 py-1 rounded-full font-medium ${post.status === 'open'
+                                ? 'bg-green-100 text-green-700'
+                                : post.status === 'in-progress'
                                   ? 'bg-yellow-100 text-yellow-700'
                                   : 'bg-gray-200 text-gray-700'
-                              }`}
+                                }`}
                             >
                               {post.status}
                             </span>
@@ -1107,10 +1102,10 @@ function UserDashboard({ user }: { user: AppUser }) {
                               value={
                                 post.postedAt
                                   ? new Date(post.postedAt).toLocaleDateString('en-LK', {
-                                      year: 'numeric',
-                                      month: 'short',
-                                      day: 'numeric',
-                                    })
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric',
+                                  })
                                   : '-'
                               }
                             />

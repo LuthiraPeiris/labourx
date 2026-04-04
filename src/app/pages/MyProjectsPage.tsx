@@ -143,7 +143,6 @@ export function MyProjectsPage() {
                 + Post New Job
               </Link>
             </div>
-
             <div className="grid grid-cols-3 gap-4 mt-6 bg-white/10 rounded-xl p-4">
               <div className="text-center">
                 <p className="text-white" style={{ fontWeight: 700, fontSize: '1.5rem' }}>{myPosts.length}</p>

@@ -1052,7 +1052,6 @@ export function TechnicianProfilePage() {
                         Post a job, select {technician.name.split(' ')[0]}'s bid, and complete the project to unlock reviews.
                       </p>
                     </div>
-
                     <button
                       disabled
                       className="mt-3 w-full flex items-center justify-center gap-2 bg-muted text-muted-foreground py-2.5 rounded-lg text-sm cursor-not-allowed opacity-60"
