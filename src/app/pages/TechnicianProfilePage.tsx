@@ -20,7 +20,16 @@ import {
   Bookmark,
   AlertCircle,
 } from 'lucide-react';
-import { doc, getDoc, collection, getDocs, updateDoc } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  collection,
+  getDocs,
+  updateDoc,
+  setDoc,
+  deleteDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
 import { ReviewCard } from '../components/ReviewCard';
 import { StarRating } from '../components/StarRating';
 import { db } from '../../firebase/config';
@@ -46,6 +55,13 @@ export function TechnicianProfilePage() {
   const [loading, setLoading] = useState(true);
   const [hasWorkedTogether, setHasWorkedTogether] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
+
+  const [shareMessage, setShareMessage] = useState('');
+  const [sharing, setSharing] = useState(false);
+
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
+  const [bookmarkMessage, setBookmarkMessage] = useState('');
 
   const isClient = currentUser?.role === 'user';
   const isTechnician = currentUser?.role === 'technician';
@@ -76,58 +92,46 @@ export function TechnicianProfilePage() {
           return;
         }
 
-        const resolvedLocationText =
-          String(data.locationText || '').trim() ||
-          String(data.location || '').trim() ||
-          String(data.city || '').trim() ||
-          'Location not specified';
-
-        const resolvedHourlyRate =
-          String(data.hourlyRate || '').trim() ||
-          String(data.wage || '').trim() ||
-          String(data.wages || '').trim() ||
-          'Contact for pricing';
-
         const techData = {
-  id: techSnap.id,
-  name: data.name || 'Unknown Professional',
-  email: data.email || '',
-  phone: data.phone || '',
-  specialty: data.specialty || 'Professional',
-  location:
-    data.locationText ||
-    data.locationName ||
-    data.address ||
-    data.location ||
-    data.city ||
-    'Location not specified',
-  city: data.city || '',
-  avatar: data.avatar || data.photoURL || '',
-  role: data.role || 'technician',
-  bio: data.bio || 'No bio added yet.',
-  yearsExperience: Number(data.yearsExperience || 0),
-  rating: Number(data.rating || 0),
-  reviewCount: Number(data.totalReviews || data.reviewCount || 0),
-  skills: Array.isArray(data.skills) ? data.skills : [],
-  certifications: Array.isArray(data.certifications)
-    ? data.certifications
-    : [],
-  education: Array.isArray(data.education) ? data.education : [],
-  projects: Array.isArray(data.projects) ? data.projects : [],
-  reviews: Array.isArray(data.reviews) ? data.reviews : [],
-  availability: data.availability || 'Available',
-  hourlyRate:
-    data.hourlyRate ||
-    data.wages ||
-    data.wage ||
-    data.price ||
-    data.rate ||
-    'Contact for pricing',
-  completedProjects: Number(data.completedProjects || 0),
-  joinedAt: data.joinedAt || '',
-  isVerified: Boolean(data.isVerified || false),
-  website: data.website || '',
-};
+          id: techSnap.id,
+          name: data.name || 'Unknown Professional',
+          email: data.email || '',
+          phone: data.phone || '',
+          specialty: data.specialty || 'Professional',
+          location:
+            data.locationText ||
+            data.locationName ||
+            data.address ||
+            data.location ||
+            data.city ||
+            'Location not specified',
+          city: data.city || '',
+          avatar: data.avatar || data.photoURL || '',
+          role: data.role || 'technician',
+          bio: data.bio || 'No bio added yet.',
+          yearsExperience: Number(data.yearsExperience || 0),
+          rating: Number(data.rating || 0),
+          reviewCount: Number(data.totalReviews || data.reviewCount || 0),
+          skills: Array.isArray(data.skills) ? data.skills : [],
+          certifications: Array.isArray(data.certifications)
+            ? data.certifications
+            : [],
+          education: Array.isArray(data.education) ? data.education : [],
+          projects: Array.isArray(data.projects) ? data.projects : [],
+          reviews: Array.isArray(data.reviews) ? data.reviews : [],
+          availability: data.availability || 'Available',
+          hourlyRate:
+            data.hourlyRate ||
+            data.wages ||
+            data.wage ||
+            data.price ||
+            data.rate ||
+            'Contact for pricing',
+          completedProjects: Number(data.completedProjects || 0),
+          joinedAt: data.joinedAt || '',
+          isVerified: Boolean(data.isVerified || false),
+          website: data.website || '',
+        };
 
         setTechnician(techData);
 
@@ -160,6 +164,137 @@ export function TechnicianProfilePage() {
 
     fetchTechnicianProfile();
   }, [id, currentUser?.uid, currentUser?.role]);
+
+  useEffect(() => {
+    const checkBookmarkStatus = async () => {
+      if (!id || !currentUser || currentUser.role !== 'user') {
+        setIsBookmarked(false);
+        return;
+      }
+
+      try {
+        const bookmarkId = `${currentUser.uid}_${id}`;
+        const bookmarkRef = doc(db, 'bookmarks', bookmarkId);
+        const bookmarkSnap = await getDoc(bookmarkRef);
+        setIsBookmarked(bookmarkSnap.exists());
+      } catch (error) {
+        console.error('Error checking bookmark status:', error);
+        setIsBookmarked(false);
+      }
+    };
+
+    checkBookmarkStatus();
+  }, [id, currentUser]);
+
+  useEffect(() => {
+    if (!shareMessage) return;
+
+    const timer = setTimeout(() => {
+      setShareMessage('');
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [shareMessage]);
+
+  useEffect(() => {
+    if (!bookmarkMessage) return;
+
+    const timer = setTimeout(() => {
+      setBookmarkMessage('');
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [bookmarkMessage]);
+
+  const handleShareProfile = async () => {
+    if (!technician || !id) return;
+
+    try {
+      setSharing(true);
+
+      const shareUrl = `${window.location.origin}/technician/${id}`;
+      const shareTitle = `${technician.name} - ${technician.specialty}`;
+      const shareText = `Check out ${technician.name}'s professional profile on LabourX.`;
+
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: shareTitle,
+            text: shareText,
+            url: shareUrl,
+          });
+          setShareMessage('Profile shared successfully');
+          return;
+        } catch (shareError: any) {
+          if (shareError?.name === 'AbortError') {
+            return;
+          }
+        }
+      }
+
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareMessage('Profile link copied');
+      } else {
+        const tempInput = document.createElement('input');
+        tempInput.value = shareUrl;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        setShareMessage('Profile link copied');
+      }
+    } catch (error) {
+      console.error('Error sharing profile:', error);
+      setShareMessage('Unable to share profile');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const handleToggleBookmark = async () => {
+    if (!id || !technician) return;
+
+    if (!currentUser) {
+      navigate('/login');
+      return;
+    }
+
+    if (currentUser.role !== 'user') {
+      setBookmarkMessage('Only clients can save professionals');
+      return;
+    }
+
+    try {
+      setBookmarkLoading(true);
+
+      const bookmarkId = `${currentUser.uid}_${id}`;
+      const bookmarkRef = doc(db, 'bookmarks', bookmarkId);
+
+      if (isBookmarked) {
+        await deleteDoc(bookmarkRef);
+        setIsBookmarked(false);
+        setBookmarkMessage('Removed from saved');
+      } else {
+        await setDoc(bookmarkRef, {
+          userId: currentUser.uid,
+          technicianId: id,
+          createdAt: serverTimestamp(),
+          technicianName: technician.name || '',
+          technicianSpecialty: technician.specialty || '',
+          technicianLocation: technician.location || '',
+          technicianAvatar: technician.avatar || '',
+        });
+        setIsBookmarked(true);
+        setBookmarkMessage('Professional saved');
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+      setBookmarkMessage('Unable to update saved list');
+    } finally {
+      setBookmarkLoading(false);
+    }
+  };
 
   const openReviewForm = () => {
     if (!isClient || !hasWorkedTogether) return;
@@ -394,20 +529,47 @@ export function TechnicianProfilePage() {
                   <span>({technician.reviewCount} reviews)</span>
                 </div>
               </div>
+
+              {shareMessage && (
+                <div className="mt-3 inline-flex items-center rounded-lg bg-white/15 border border-white/20 px-3 py-1.5 text-xs text-white">
+                  {shareMessage}
+                </div>
+              )}
+
+              {bookmarkMessage && (
+                <div className="mt-3 inline-flex items-center rounded-lg bg-white/15 border border-white/20 px-3 py-1.5 text-xs text-white ml-0 sm:ml-2">
+                  {bookmarkMessage}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2 self-start">
               <button
                 type="button"
-                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-colors"
+                onClick={handleShareProfile}
+                disabled={sharing}
+                title="Share profile"
+                aria-label="Share profile"
+                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <Share2 className="w-4 h-4" />
               </button>
+
               <button
                 type="button"
-                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-colors"
+                onClick={handleToggleBookmark}
+                disabled={bookmarkLoading}
+                title={isBookmarked ? 'Remove bookmark' : 'Save professional'}
+                aria-label={isBookmarked ? 'Remove bookmark' : 'Save professional'}
+                className={`p-2 rounded-lg border transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+                  isBookmarked
+                    ? 'bg-gold text-white border-gold'
+                    : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
+                }`}
               >
-                <Bookmark className="w-4 h-4" />
+                <Bookmark
+                  className={`w-4 h-4 ${isBookmarked ? 'fill-current' : ''}`}
+                />
               </button>
             </div>
           </div>
