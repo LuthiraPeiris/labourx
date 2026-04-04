@@ -1,95 +1,226 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  Search, Star, Shield, Zap, Users, TrendingUp, ArrowRight,
-  HardHat, Lightbulb, Droplets, Palette, PenTool, Hammer,
-  CheckCircle, Award, MessageSquare, ChevronRight
+  Search,
+  Star,
+  Shield,
+  Zap,
+  Users,
+  TrendingUp,
+  ArrowRight,
+  HardHat,
+  Lightbulb,
+  Droplets,
+  Palette,
+  PenTool,
+  Hammer,
+  CheckCircle,
+  Award,
+  MessageSquare,
+  ChevronRight,
+  X,
 } from 'lucide-react';
-import { collection, getDocs } from 'firebase/firestore';
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  serverTimestamp,
+} from 'firebase/firestore';
 import { db } from '../../firebase/config';
+import { useAuth } from '../context/AuthContext';
 import { TechnicianCard } from '../components/TechnicianCard';
 import { PostCard } from '../components/PostCard';
 
 const categories = [
-  { name: 'Mason', icon: HardHat, color: 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400', description: 'Brickwork, Concrete & Foundations' },
-  { name: 'Electrician', icon: Lightbulb, color: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400', description: 'Wiring, Solar & Smart Home' },
-  { name: 'Plumber', icon: Droplets, color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400', description: 'Pipes, Drainage & Fixtures' },
-  { name: 'Interior Designer', icon: Palette, color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400', description: 'Spaces, Aesthetics & Interiors' },
-  { name: 'Architect', icon: PenTool, color: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400', description: 'Design, Planning & Structure' },
-  { name: 'Carpenter', icon: Hammer, color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400', description: 'Furniture, Kitchens & Woodwork' },
+  {
+    name: 'Mason',
+    icon: HardHat,
+    color:
+      'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
+    description: 'Brickwork, Concrete & Foundations',
+  },
+  {
+    name: 'Electrician',
+    icon: Lightbulb,
+    color:
+      'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
+    description: 'Wiring, Solar & Smart Home',
+  },
+  {
+    name: 'Plumber',
+    icon: Droplets,
+    color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+    description: 'Pipes, Drainage & Fixtures',
+  },
+  {
+    name: 'Interior Designer',
+    icon: Palette,
+    color:
+      'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
+    description: 'Spaces, Aesthetics & Interiors',
+  },
+  {
+    name: 'Architect',
+    icon: PenTool,
+    color:
+      'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
+    description: 'Design, Planning & Structure',
+  },
+  {
+    name: 'Carpenter',
+    icon: Hammer,
+    color:
+      'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
+    description: 'Furniture, Kitchens & Woodwork',
+  },
 ];
 
 const steps = [
-  { icon: Search, title: 'Search & Discover', description: 'Search for professionals by specialty and location. Browse verified profiles, portfolios, and reviews.' },
-  { icon: MessageSquare, title: 'Post or Connect', description: 'Post your project and receive bids, or directly contact a professional whose work impresses you.' },
-  { icon: CheckCircle, title: 'Get Work Done', description: 'Choose the best professional, get your project executed, and leave a review to help the community.' },
+  {
+    icon: Search,
+    title: 'Search & Discover',
+    description:
+      'Search for professionals by specialty and location. Browse verified profiles, portfolios, and reviews.',
+  },
+  {
+    icon: MessageSquare,
+    title: 'Post or Connect',
+    description:
+      'Post your project and receive bids, or directly contact a professional whose work impresses you.',
+  },
+  {
+    icon: CheckCircle,
+    title: 'Get Work Done',
+    description:
+      'Choose the best professional, get your project executed, and leave a review to help the community.',
+  },
 ];
 
-const testimonials = [
-  {
-    name: 'Nimasha Jayasinghe',
-    city: 'Colombo',
-    avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-    rating: 5,
-    text: "LabourX made finding an architect for our dream home so simple. Within a day, we had 6 proposals with detailed plans and budgets. We found the perfect match!",
-    project: 'Custom Home Design',
-  },
-  {
-    name: 'Rukshan Perera',
-    city: 'Kandy',
-    avatar: 'https://randomuser.me/api/portraits/men/52.jpg',
-    rating: 5,
-    text: "As a technician, this platform transformed my business. I now get consistent projects and clients can see my full portfolio before contacting me.",
-    project: 'Master Electrician',
-  },
-  {
-    name: 'Chamari Seneviratne',
-    city: 'Galle',
-    avatar: 'https://randomuser.me/api/portraits/women/33.jpg',
-    rating: 5,
-    text: "Posted my kitchen renovation project and had 8 bids within 48 hours! The detailed proposals with budgets and timelines made it easy to choose the right carpenter.",
-    project: 'Kitchen Renovation',
-  },
-];
+type PlatformReview = {
+  id: string;
+  userId?: string;
+  userName?: string;
+  userAvatar?: string;
+  userCity?: string;
+  userRole?: string;
+  rating?: number;
+  comment?: string;
+  createdAt?: any;
+};
 
 function formatCount(value: number) {
   return `${value.toLocaleString()}+`;
 }
 
+function getReviewDate(createdAt: any) {
+  try {
+    if (!createdAt) return 'Recently';
+
+    if (createdAt?.seconds) {
+      return new Date(createdAt.seconds * 1000).toLocaleDateString('en-LK', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+
+    return new Date(createdAt).toLocaleDateString('en-LK', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  } catch {
+    return 'Recently';
+  }
+}
+
+function getUserAvatar(name?: string, avatar?: string) {
+  if (avatar) return avatar;
+
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    name || 'User'
+  )}&background=8B1A2F&color=fff`;
+}
+
 export function HomePage() {
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [technicians, setTechnicians] = useState<any[]>([]);
   const [workPosts, setWorkPosts] = useState<any[]>([]);
+  const [platformReviews, setPlatformReviews] = useState<PlatformReview[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const [deletingReviewId, setDeletingReviewId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchHomepageData = async () => {
       try {
+        setReviewsLoading(true);
+
         const usersSnapshot = await getDocs(collection(db, 'users'));
         const postsSnapshot = await getDocs(collection(db, 'posts'));
+        const platformReviewsSnapshot = await getDocs(
+          collection(db, 'platformReviews')
+        );
 
-        const usersData: any[] = usersSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          uid: doc.id,
-          ...doc.data(),
+        const usersData: any[] = usersSnapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          uid: docSnap.id,
+          ...docSnap.data(),
         }));
 
-        const postsData: any[] = postsSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
+        const postsData: any[] = postsSnapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
         }));
+
+        const reviewsData: PlatformReview[] = platformReviewsSnapshot.docs.map(
+          (docSnap) => ({
+            id: docSnap.id,
+            ...(docSnap.data() as Omit<PlatformReview, 'id'>),
+          })
+        );
 
         const technicianUsers = usersData.filter(
-          (user: any) => String(user.role || '').toLowerCase() === 'technician'
+          (userItem: any) =>
+            String(userItem.role || '').toLowerCase() === 'technician'
         );
+
+        reviewsData.sort((a, b) => {
+          const aTime = a.createdAt?.seconds
+            ? a.createdAt.seconds * 1000
+            : a.createdAt
+            ? new Date(a.createdAt).getTime()
+            : 0;
+
+          const bTime = b.createdAt?.seconds
+            ? b.createdAt.seconds * 1000
+            : b.createdAt
+            ? new Date(b.createdAt).getTime()
+            : 0;
+
+          return bTime - aTime;
+        });
 
         setTechnicians(technicianUsers);
         setWorkPosts(postsData);
+        setPlatformReviews(reviewsData.slice(0, 3));
       } catch (error) {
         console.error('Error fetching homepage data:', error);
         setTechnicians([]);
         setWorkPosts([]);
+        setPlatformReviews([]);
+      } finally {
+        setReviewsLoading(false);
       }
     };
 
@@ -97,8 +228,8 @@ export function HomePage() {
   }, []);
 
   const homeStats = useMemo(() => {
-    const verifiedTechnicians = technicians.filter(
-      (tech: any) => Boolean(tech.isVerified)
+    const verifiedTechnicians = technicians.filter((tech: any) =>
+      Boolean(tech.isVerified)
     );
 
     const verifiedProfessionalsCount =
@@ -193,19 +324,17 @@ export function HomePage() {
         return !status || status === 'open' || status === 'active';
       })
       .sort((a: any, b: any) => {
-        const aTime =
-          a.createdAt?.seconds
-            ? a.createdAt.seconds
-            : a.createdAt instanceof Date
-              ? a.createdAt.getTime()
-              : 0;
+        const aTime = a.createdAt?.seconds
+          ? a.createdAt.seconds
+          : a.createdAt instanceof Date
+          ? a.createdAt.getTime()
+          : 0;
 
-        const bTime =
-          b.createdAt?.seconds
-            ? b.createdAt.seconds
-            : b.createdAt instanceof Date
-              ? b.createdAt.getTime()
-              : 0;
+        const bTime = b.createdAt?.seconds
+          ? b.createdAt.seconds
+          : b.createdAt instanceof Date
+          ? b.createdAt.getTime()
+          : 0;
 
         return bTime - aTime;
       })
@@ -238,13 +367,110 @@ export function HomePage() {
     navigate(`/search?specialty=${encodeURIComponent(specialty)}`);
   };
 
+  const openReviewModal = () => {
+    setReviewError('');
+    setReviewComment('');
+    setReviewRating(5);
+    setIsReviewModalOpen(true);
+  };
+
+  const closeReviewModal = () => {
+    if (reviewSubmitting) return;
+    setIsReviewModalOpen(false);
+    setReviewError('');
+  };
+
+  const handleSubmitPlatformReview = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
+    e.preventDefault();
+
+    if (!user) return;
+
+    const trimmedComment = reviewComment.trim();
+
+    if (!trimmedComment) {
+      setReviewError('Please write your review.');
+      return;
+    }
+
+    if (trimmedComment.length < 10) {
+      setReviewError('Please write a slightly longer review.');
+      return;
+    }
+
+    try {
+      setReviewSubmitting(true);
+      setReviewError('');
+
+      const newReviewData = {
+        userId: user.uid,
+        userName: user.name || 'User',
+        userAvatar: user.photoURL || user.avatar || '',
+        userCity: user.city || '',
+        userRole: user.role || 'user',
+        rating: Number(reviewRating),
+        comment: trimmedComment,
+        createdAt: serverTimestamp(),
+      };
+
+      const docRef = await addDoc(
+        collection(db, 'platformReviews'),
+        newReviewData
+      );
+
+      const optimisticReview: PlatformReview = {
+        id: docRef.id,
+        ...newReviewData,
+        createdAt: new Date(),
+      };
+
+      setPlatformReviews((prev) => [optimisticReview, ...prev].slice(0, 3));
+      setIsReviewModalOpen(false);
+      setReviewComment('');
+      setReviewRating(5);
+    } catch (error) {
+      console.error('Error adding platform review:', error);
+      setReviewError('Failed to submit review. Please try again.');
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!user || !reviewId) return;
+
+    const confirmed = window.confirm(
+      'Are you sure you want to delete your review?'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setDeletingReviewId(reviewId);
+
+      await deleteDoc(doc(db, 'platformReviews', reviewId));
+
+      setPlatformReviews((prev) =>
+        prev.filter((review) => review.id !== reviewId)
+      );
+    } catch (error) {
+      console.error('Error deleting platform review:', error);
+      window.alert('Failed to delete review. Please try again.');
+    } finally {
+      setDeletingReviewId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen">
       {/* Hero */}
       <section className="relative min-h-[580px] flex items-center">
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url('https://images.unsplash.com/photo-1774600166432-ba8ac640b318?w=1400&fit=crop')` }}
+          style={{
+            backgroundImage: `url('https://images.unsplash.com/photo-1774600166432-ba8ac640b318?w=1400&fit=crop')`,
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/40" />
 
@@ -266,8 +492,8 @@ export function HomePage() {
             </h1>
 
             <p className="text-white/80 mb-8 text-lg">
-              Connect with verified masons, electricians, plumbers, architects, and more.
-              Find the right expert for your construction project.
+              Connect with verified masons, electricians, plumbers, architects,
+              and more. Find the right expert for your construction project.
             </p>
 
             <form onSubmit={handleSearch} className="flex gap-2 max-w-xl">
@@ -292,7 +518,13 @@ export function HomePage() {
             </form>
 
             <div className="flex flex-wrap gap-2 mt-4">
-              {['Mason', 'Electrician', 'Plumber', 'Architect', 'Interior Designer'].map((tag) => (
+              {[
+                'Mason',
+                'Electrician',
+                'Plumber',
+                'Architect',
+                'Interior Designer',
+              ].map((tag) => (
                 <button
                   key={tag}
                   type="button"
@@ -313,7 +545,10 @@ export function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {homeStats.map((stat, i) => (
               <div key={i} className="text-center">
-                <div className="text-white" style={{ fontSize: '1.75rem', fontWeight: 700 }}>
+                <div
+                  className="text-white"
+                  style={{ fontSize: '1.75rem', fontWeight: 700 }}
+                >
                   {stat.value}
                 </div>
                 <div className="text-white/70 text-sm">{stat.label}</div>
@@ -327,7 +562,10 @@ export function HomePage() {
       <section className="py-16 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <h2 className="text-foreground mb-3" style={{ fontSize: '2rem', fontWeight: 700 }}>
+            <h2
+              className="text-foreground mb-3"
+              style={{ fontSize: '2rem', fontWeight: 700 }}
+            >
               Browse by Specialty
             </h2>
             <p className="text-muted-foreground">
@@ -342,10 +580,15 @@ export function HomePage() {
                 to={`/search?specialty=${encodeURIComponent(cat.name)}`}
                 className="group flex flex-col items-center p-5 rounded-xl border border-border bg-card hover:border-maroon hover:shadow-md transition-all duration-200"
               >
-                <div className={`w-12 h-12 rounded-xl ${cat.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+                <div
+                  className={`w-12 h-12 rounded-xl ${cat.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}
+                >
                   <cat.icon className="w-6 h-6" />
                 </div>
-                <span className="text-sm text-center text-foreground" style={{ fontWeight: 600 }}>
+                <span
+                  className="text-sm text-center text-foreground"
+                  style={{ fontWeight: 600 }}
+                >
                   {cat.name}
                 </span>
                 <span className="text-xs text-center text-muted-foreground mt-1">
@@ -371,7 +614,10 @@ export function HomePage() {
       <section className="py-16 bg-maroon-light">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <h2 className="text-foreground mb-3" style={{ fontSize: '2rem', fontWeight: 700 }}>
+            <h2
+              className="text-foreground mb-3"
+              style={{ fontSize: '2rem', fontWeight: 700 }}
+            >
               How LabourX Works
             </h2>
             <p className="text-muted-foreground">
@@ -402,7 +648,10 @@ export function HomePage() {
                     </div>
                   </div>
 
-                  <h3 className="text-foreground mb-2" style={{ fontWeight: 600 }}>
+                  <h3
+                    className="text-foreground mb-2"
+                    style={{ fontWeight: 600 }}
+                  >
                     {step.title}
                   </h3>
                   <p className="text-muted-foreground text-sm leading-relaxed">
@@ -420,7 +669,10 @@ export function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-foreground" style={{ fontSize: '2rem', fontWeight: 700 }}>
+              <h2
+                className="text-foreground"
+                style={{ fontSize: '2rem', fontWeight: 700 }}
+              >
                 Top Professionals
               </h2>
               <p className="text-muted-foreground mt-1">
@@ -439,7 +691,11 @@ export function HomePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {featuredTechnicians.map((tech, i) => (
-              <TechnicianCard key={tech.id} technician={tech} featured={i === 0} />
+              <TechnicianCard
+                key={tech.id}
+                technician={tech}
+                featured={i === 0}
+              />
             ))}
           </div>
         </div>
@@ -449,18 +705,24 @@ export function HomePage() {
       <section className="py-12 relative overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url('https://images.unsplash.com/photo-1581674662583-5e89b374fae6?w=1400&fit=crop')` }}
+          style={{
+            backgroundImage: `url('https://images.unsplash.com/photo-1581674662583-5e89b374fae6?w=1400&fit=crop')`,
+          }}
         />
         <div className="absolute inset-0 bg-maroon/85" />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div>
-              <h2 className="text-white mb-2" style={{ fontSize: '1.75rem', fontWeight: 700 }}>
+              <h2
+                className="text-white mb-2"
+                style={{ fontSize: '1.75rem', fontWeight: 700 }}
+              >
                 Have a Project in Mind?
               </h2>
               <p className="text-white/80">
-                Post your project and receive competitive bids from verified professionals within 24 hours.
+                Post your project and receive competitive bids from verified
+                professionals within 24 hours.
               </p>
             </div>
 
@@ -490,7 +752,10 @@ export function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-foreground" style={{ fontSize: '2rem', fontWeight: 700 }}>
+              <h2
+                className="text-foreground"
+                style={{ fontSize: '2rem', fontWeight: 700 }}
+              >
                 Recent Work Posts
               </h2>
               <p className="text-muted-foreground mt-1">
@@ -519,23 +784,48 @@ export function HomePage() {
       <section className="py-16 bg-gold-light">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <h2 className="text-foreground mb-3" style={{ fontSize: '2rem', fontWeight: 700 }}>
+            <h2
+              className="text-foreground mb-3"
+              style={{ fontSize: '2rem', fontWeight: 700 }}
+            >
               Why LabourX?
             </h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {[
-              { icon: Shield, title: 'Verified Professionals', desc: 'Every professional is background-checked and verified' },
-              { icon: Star, title: 'Transparent Reviews', desc: 'Real reviews from real clients for informed decisions' },
-              { icon: Zap, title: 'Fast Matching', desc: 'Get bids and connect with experts within hours' },
-              { icon: TrendingUp, title: 'Competitive Pricing', desc: 'Compare multiple bids and get the best value' },
+              {
+                icon: Shield,
+                title: 'Verified Professionals',
+                desc: 'Every professional is background-checked and verified',
+              },
+              {
+                icon: Star,
+                title: 'Transparent Reviews',
+                desc: 'Real reviews from real users for informed decisions',
+              },
+              {
+                icon: Zap,
+                title: 'Fast Matching',
+                desc: 'Get bids and connect with experts within hours',
+              },
+              {
+                icon: TrendingUp,
+                title: 'Competitive Pricing',
+                desc: 'Compare multiple bids and get the best value',
+              },
             ].map((item, i) => (
-              <div key={i} className="text-center bg-card border border-border rounded-xl p-5">
+              <div
+                key={i}
+                className="text-center bg-card border border-border rounded-xl p-5"
+              >
                 <div className="w-12 h-12 bg-gold/10 border border-gold/20 rounded-xl flex items-center justify-center mx-auto mb-3">
                   <item.icon className="w-6 h-6 text-gold" />
                 </div>
-                <h3 className="text-foreground mb-2 text-base" style={{ fontWeight: 600 }}>
+                <h3
+                  className="text-foreground mb-2 text-base"
+                  style={{ fontWeight: 600 }}
+                >
                   {item.title}
                 </h3>
                 <p className="text-muted-foreground text-sm">{item.desc}</p>
@@ -545,61 +835,138 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Platform Reviews */}
       <section className="py-16 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <h2 className="text-foreground mb-3" style={{ fontSize: '2rem', fontWeight: 700 }}>
+            <h2
+              className="text-foreground mb-3"
+              style={{ fontSize: '2rem', fontWeight: 700 }}
+            >
               What Our Community Says
             </h2>
             <p className="text-muted-foreground">
               Stories from homeowners and professionals across Sri Lanka
             </p>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {testimonials.map((t, i) => (
-              <div key={i} className="bg-card border border-border rounded-xl p-6">
-                <div className="flex items-center gap-1 mb-3">
-                  {Array.from({ length: t.rating }, (_, j) => (
-                    <Star key={j} className="w-4 h-4 fill-gold text-gold" />
-                  ))}
-                </div>
-
-                <p className="text-card-foreground text-sm leading-relaxed mb-4 italic">
-                  "{t.text}"
-                </p>
-
-                <div className="flex items-center gap-3">
-                  <img
-                    src={t.avatar}
-                    alt={t.name}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                  <div>
-                    <p style={{ fontWeight: 600 }} className="text-sm text-card-foreground">
-                      {t.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {t.project} · {t.city}
-                    </p>
-                  </div>
-                </div>
+            {isAuthenticated && (
+              <div className="mt-5">
+                <button
+                  type="button"
+                  onClick={openReviewModal}
+                  className="bg-maroon hover:bg-maroon-dark text-white px-5 py-2.5 rounded-xl transition-colors inline-flex items-center gap-2"
+                  style={{ fontWeight: 600 }}
+                >
+                  <Star className="w-4 h-4" />
+                  Add a review
+                </button>
               </div>
-            ))}
+            )}
           </div>
+
+          {reviewsLoading ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Loading reviews...</p>
+            </div>
+          ) : platformReviews.length === 0 ? (
+            <div className="text-center py-12 bg-card border border-border rounded-xl">
+              <p
+                className="text-card-foreground text-lg"
+                style={{ fontWeight: 600 }}
+              >
+                No reviews yet
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {platformReviews.map((review) => {
+                const isMyReview = !!user && review.userId === user.uid;
+                const isDeleting = deletingReviewId === review.id;
+
+                return (
+                  <div
+                    key={review.id}
+                    className="relative bg-card border border-border rounded-xl p-6"
+                  >
+                    {isMyReview && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteReview(review.id)}
+                        disabled={isDeleting}
+                        className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-muted transition-colors disabled:opacity-60"
+                        title="Delete your review"
+                      >
+                        <X className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    )}
+
+                    <div className="flex items-center gap-1 mb-3">
+                      {Array.from(
+                        { length: Number(review.rating || 0) },
+                        (_, j) => (
+                          <Star
+                            key={j}
+                            className="w-4 h-4 fill-gold text-gold"
+                          />
+                        )
+                      )}
+                    </div>
+
+                    <p className="text-card-foreground text-sm leading-relaxed mb-4 italic">
+                      "{review.comment}"
+                    </p>
+
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={getUserAvatar(review.userName, review.userAvatar)}
+                        alt={review.userName || 'User'}
+                        className="w-10 h-10 rounded-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = getUserAvatar(
+                            review.userName,
+                            ''
+                          );
+                        }}
+                      />
+                      <div>
+                        <p
+                          style={{ fontWeight: 600 }}
+                          className="text-sm text-card-foreground"
+                        >
+                          {review.userName || 'User'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {review.userRole === 'technician'
+                            ? 'Professional'
+                            : 'Registered User'}
+                          {review.userCity ? ` · ${review.userCity}` : ''}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {getReviewDate(review.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
       {/* Join CTA */}
       <section className="py-14 bg-maroon-light border-t border-maroon/10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-foreground mb-3" style={{ fontSize: '2rem', fontWeight: 700 }}>
+          <h2
+            className="text-foreground mb-3"
+            style={{ fontSize: '2rem', fontWeight: 700 }}
+          >
             Are You a Construction Professional?
           </h2>
 
           <p className="text-muted-foreground mb-6 text-lg">
-            Join LabourX and showcase your expertise to thousands of clients. Build your portfolio, receive job offers, and grow your business.
+            Join LabourX and showcase your expertise to thousands of clients.
+            Build your portfolio, receive job offers, and grow your business.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -623,6 +990,105 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Add Review Modal */}
+      {isAuthenticated && isReviewModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-4">
+          <div className="w-full max-w-lg bg-card border border-border rounded-2xl shadow-xl">
+            <div className="flex items-center justify-between p-5 border-b border-border">
+              <div>
+                <h3
+                  className="text-foreground text-lg"
+                  style={{ fontWeight: 700 }}
+                >
+                  Add a Review
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Share your experience about the LabourX platform
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeReviewModal}
+                className="p-2 rounded-lg hover:bg-muted transition-colors"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitPlatformReview} className="p-5">
+              <div className="mb-5">
+                <label
+                  className="block text-sm text-foreground mb-2"
+                  style={{ fontWeight: 600 }}
+                >
+                  Rating
+                </label>
+
+                <div className="flex items-center gap-2">
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setReviewRating(value)}
+                      className="transition-transform hover:scale-110"
+                    >
+                      <Star
+                        className={`w-7 h-7 ${
+                          value <= reviewRating
+                            ? 'fill-gold text-gold'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label
+                  className="block text-sm text-foreground mb-2"
+                  style={{ fontWeight: 600 }}
+                >
+                  Your review
+                </label>
+                <textarea
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  rows={5}
+                  placeholder="Write your experience about LabourX..."
+                  className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-maroon resize-none"
+                />
+              </div>
+
+              {reviewError && (
+                <p className="text-sm text-red-600 mb-4">{reviewError}</p>
+              )}
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={closeReviewModal}
+                  className="px-4 py-2.5 rounded-xl border border-border text-foreground hover:bg-muted transition-colors"
+                  disabled={reviewSubmitting}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={reviewSubmitting}
+                  className="bg-maroon hover:bg-maroon-dark disabled:opacity-60 text-white px-5 py-2.5 rounded-xl transition-colors"
+                  style={{ fontWeight: 600 }}
+                >
+                  {reviewSubmitting ? 'Submitting...' : 'Submit Review'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
