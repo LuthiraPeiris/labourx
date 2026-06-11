@@ -105,7 +105,11 @@ export function LoginPage() {
         return;
       }
 
-      navigate('/dashboard');
+      if (actualRole === 'technician') {
+  navigate('/professional-dashboard');
+} else {
+  navigate('/user-dashboard');
+}
     } catch (err: any) {
       console.error(err);
 

@@ -3,7 +3,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase/config';
 
-export type UserRole = 'user' | 'technician';
+export type UserRole = 'user' | 'technician' | 'admin';
 export type WageType = 'hourly' | 'daily' | 'project';
 
 export interface AuthUser {

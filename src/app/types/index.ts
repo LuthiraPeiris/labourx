@@ -52,6 +52,10 @@ export interface Technician {
   completedProjects: number;
   joinedAt: string;
   isVerified: boolean;
+  isBoosted?: boolean;
+  boostBadge?: 'Top' | 'Verified' | 'Featured' | '';
+  boostPlan?: string;
+  boostStatus?: string;
   website?: string;
 }
 

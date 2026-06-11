@@ -37,9 +37,9 @@ interface RegisterForm {
   wageType: WageType;
 }
 
-export function RegisterPage() {
-  const [role, setRole] = useState<Role>('user');
-  const [step, setStep] = useState(1);
+export function RegisterPage({ fixedRole }: { fixedRole?: Role }) {
+  const [role, setRole] = useState<Role>(fixedRole || 'user');
+  const [step, setStep] = useState(fixedRole ? 2 : 1);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -188,7 +188,12 @@ export function RegisterPage() {
       };
 
       await registerUser(role, payload);
-      navigate('/dashboard');
+
+if (role === 'technician') {
+  navigate('/professional-dashboard');
+} else {
+  navigate('/user-dashboard');
+}
     } catch (error: any) {
       console.error('Registration error:', error);
 

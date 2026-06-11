@@ -19,6 +19,7 @@ import {
   Share2,
   Bookmark,
   AlertCircle,
+  TrendingUp,
 } from 'lucide-react';
 import {
   doc,
@@ -65,6 +66,14 @@ export function TechnicianProfilePage() {
 
   const isClient = currentUser?.role === 'user';
   const isTechnician = currentUser?.role === 'technician';
+  const isOwnProfile =
+  isTechnician &&
+  !!technician &&
+  (
+    currentUser?.uid === technician.id ||
+    currentUser?.uid === id ||
+    currentUser?.email === technician.email
+  );
 
   useEffect(() => {
     const fetchTechnicianProfile = async () => {
@@ -130,6 +139,11 @@ export function TechnicianProfilePage() {
           completedProjects: Number(data.completedProjects || 0),
           joinedAt: data.joinedAt || '',
           isVerified: Boolean(data.isVerified || false),
+          isBoosted: Boolean(data.isBoosted || false),
+          boostBadge: data.boostBadge || '',
+          boostPlan: data.boostPlan || '',
+          boostStatus: data.boostStatus || '',
+          boostExpiresAt: data.boostExpiresAt || null,
           website: data.website || '',
         };
 
@@ -316,6 +330,19 @@ export function TechnicianProfilePage() {
     Limited: 'bg-yellow-100 text-yellow-700',
   };
 
+  const boostStatus = String(technician?.boostStatus || '').toLowerCase();
+const boostExpiresAt = technician?.boostExpiresAt || null;
+
+const isBoostNotExpired =
+  !boostExpiresAt || new Date(boostExpiresAt).getTime() > Date.now();
+
+const isBoosted =
+  Boolean(technician?.isBoosted) &&
+  boostStatus === 'active' &&
+  isBoostNotExpired;
+
+const boostBadge = technician?.boostBadge || '';
+
   const safeAvailability =
     technician?.availability &&
     availabilityColors[
@@ -496,6 +523,19 @@ export function TechnicianProfilePage() {
                   </span>
                 )}
 
+                {isBoosted && (
+                  <span
+                    className="bg-gold text-white text-xs px-2 py-0.5 rounded-full"
+                    style={{ fontWeight: 700 }}
+                  >
+                    {boostBadge === 'Top'
+                      ? '⭐ Top Professional'
+                      : boostBadge === 'Verified'
+                      ? '✓ Verified Boost'
+                      : '✦ Featured Professional'}
+                  </span>
+                )}
+
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full ${
                     availabilityColors[
@@ -544,6 +584,36 @@ export function TechnicianProfilePage() {
             </div>
 
             <div className="flex gap-2 self-start">
+              {isOwnProfile && (
+  <div className="bg-gold-light border border-gold/20 rounded-xl p-5">
+    <div className="flex items-center gap-3 mb-3">
+      <div className="w-8 h-8 bg-gold/10 rounded-lg flex items-center justify-center">
+        <TrendingUp className="w-4 h-4 text-gold" />
+      </div>
+      <div>
+        <h3 className="text-foreground text-sm" style={{ fontWeight: 700 }}>
+          Boost Your Profile
+        </h3>
+        <p className="text-muted-foreground text-xs">
+          Get more visibility from clients
+        </p>
+      </div>
+    </div>
+
+    <Link
+      to={`/boost-payment?type=profile&name=${encodeURIComponent(
+        `${technician.name || 'My Profile'} – ${
+          technician.specialty || 'Professional'
+        }`
+      )}`}
+      className="w-full flex items-center justify-center gap-2 bg-gold hover:bg-gold-dark text-white py-2.5 rounded-lg text-sm transition-colors"
+      style={{ fontWeight: 600 }}
+    >
+      <TrendingUp className="w-4 h-4" />
+      Boost Now
+    </Link>
+  </div>
+)}
               <button
                 type="button"
                 onClick={handleShareProfile}
@@ -1076,6 +1146,34 @@ export function TechnicianProfilePage() {
           </div>
 
           <div className="w-full lg:w-72 space-y-5 flex-shrink-0">
+            {isTechnician && isOwnProfile && (
+  <div className="bg-gold-light border border-gold/20 rounded-xl p-5">
+    <div className="flex items-center gap-3 mb-3">
+      <div className="w-8 h-8 bg-gold/10 rounded-lg flex items-center justify-center">
+        <TrendingUp className="w-4 h-4 text-gold" />
+      </div>
+      <div>
+        <h3 className="text-foreground text-sm" style={{ fontWeight: 700 }}>
+          Boost Your Profile
+        </h3>
+        <p className="text-muted-foreground text-xs">
+          Get more visibility from clients
+        </p>
+      </div>
+    </div>
+
+    <Link
+      to={`/boost-payment?type=profile&name=${encodeURIComponent(
+        technician.name || 'My Profile'
+      )}`}
+      className="w-full flex items-center justify-center gap-2 bg-gold hover:bg-gold-dark text-white py-2.5 rounded-lg text-sm transition-colors"
+      style={{ fontWeight: 600 }}
+    >
+      <TrendingUp className="w-4 h-4" />
+      Boost Now
+    </Link>
+  </div>
+)}
             <div className="bg-card border border-border rounded-xl p-5">
               <h3 className="text-foreground mb-4" style={{ fontWeight: 600 }}>
                 Contact Information

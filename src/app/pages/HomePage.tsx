@@ -19,6 +19,10 @@ import {
   MessageSquare,
   ChevronRight,
   X,
+  ExternalLink,
+  ChevronLeft,
+  Coffee,
+  Heart,
 } from 'lucide-react';
 import {
   addDoc,
@@ -27,6 +31,8 @@ import {
   doc,
   getDocs,
   serverTimestamp,
+  updateDoc,
+  increment,
 } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useAuth } from '../context/AuthContext';
@@ -152,6 +158,9 @@ export function HomePage() {
   const [technicians, setTechnicians] = useState<any[]>([]);
   const [workPosts, setWorkPosts] = useState<any[]>([]);
   const [platformReviews, setPlatformReviews] = useState<PlatformReview[]>([]);
+  const [ads, setAds] = useState<any[]>([]);
+  const [adIndex, setAdIndex] = useState(0);
+  const [adFade, setAdFade] = useState(true);
   const [reviewsLoading, setReviewsLoading] = useState(true);
 
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -172,6 +181,10 @@ export function HomePage() {
           collection(db, 'platformReviews')
         );
 
+        const adsSnapshot = await getDocs(
+          collection(db, 'ads')
+        );
+
         const usersData: any[] = usersSnapshot.docs.map((docSnap) => ({
           id: docSnap.id,
           uid: docSnap.id,
@@ -189,6 +202,17 @@ export function HomePage() {
             ...(docSnap.data() as Omit<PlatformReview, 'id'>),
           })
         );
+
+        const adsData = adsSnapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }))
+          .filter(
+            (ad: any) =>
+              ad.status === "active" &&
+              (!ad.endDate || new Date(ad.endDate) > new Date())
+          );
 
         const technicianUsers = usersData.filter(
           (userItem: any) =>
@@ -214,6 +238,7 @@ export function HomePage() {
         setTechnicians(technicianUsers);
         setWorkPosts(postsData);
         setPlatformReviews(reviewsData.slice(0, 3));
+        setAds(adsData);
       } catch (error) {
         console.error('Error fetching homepage data:', error);
         setTechnicians([]);
@@ -300,22 +325,40 @@ export function HomePage() {
   }, [technicians, workPosts]);
 
   const featuredTechnicians = useMemo(() => {
-    return [...technicians]
-      .sort((a: any, b: any) => {
-        const ratingA = Number(a.rating ?? 0);
-        const ratingB = Number(b.rating ?? 0);
+  const isActiveBoost = (tech: any) => {
+    const isBoosted = Boolean(tech.isBoosted);
+    const boostStatus = String(tech.boostStatus || '').toLowerCase();
+    const boostExpiresAt = tech.boostExpiresAt || null;
 
-        if (ratingB !== ratingA) return ratingB - ratingA;
+    const isNotExpired =
+      !boostExpiresAt ||
+      String(boostExpiresAt).toLowerCase() === 'null' ||
+      new Date(boostExpiresAt).getTime() > Date.now();
 
-        const reviewsA = Number(a.totalReviews ?? 0);
-        const reviewsB = Number(b.totalReviews ?? 0);
+    return isBoosted && boostStatus === 'active' && isNotExpired;
+  };
 
-        if (reviewsB !== reviewsA) return reviewsB - reviewsA;
+  return [...technicians]
+    .sort((a: any, b: any) => {
+      const boostedA = isActiveBoost(a) ? 1 : 0;
+      const boostedB = isActiveBoost(b) ? 1 : 0;
 
-        return 0;
-      })
-      .slice(0, 3);
-  }, [technicians]);
+      if (boostedB !== boostedA) return boostedB - boostedA;
+
+      const ratingA = Number(a.rating ?? 0);
+      const ratingB = Number(b.rating ?? 0);
+
+      if (ratingB !== ratingA) return ratingB - ratingA;
+
+      const reviewsA = Number(a.totalReviews ?? a.reviewCount ?? 0);
+      const reviewsB = Number(b.totalReviews ?? b.reviewCount ?? 0);
+
+      if (reviewsB !== reviewsA) return reviewsB - reviewsA;
+
+      return 0;
+    })
+    .slice(0, 3);
+}, [technicians]);
 
   const recentWorkPosts = useMemo(() => {
     return [...workPosts]
@@ -340,6 +383,59 @@ export function HomePage() {
       })
       .slice(0, 3);
   }, [workPosts]);
+
+  const currentAd = ads.length > 0 ? ads[adIndex] : null;
+  useEffect(() => {
+  if (!currentAd) return;
+
+  const updateViews = async () => {
+    try {
+      const adRef = doc(db, "ads", currentAd.id);
+
+      await updateDoc(adRef, {
+        views: increment(1),
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  updateViews();
+}, [currentAd]);
+
+const changeAd = (nextIndex: number) => {
+  setAdFade(false);
+
+  setTimeout(() => {
+    setAdIndex(nextIndex);
+    setAdFade(true);
+  }, 200);
+};
+
+const prevAd = () => {
+  if (ads.length === 0) return;
+  changeAd((adIndex - 1 + ads.length) % ads.length);
+};
+
+const nextAd = () => {
+  if (ads.length === 0) return;
+  changeAd((adIndex + 1) % ads.length);
+};
+
+  useEffect(() => {
+  if (ads.length <= 1) return;
+
+  const interval = setInterval(() => {
+    setAdFade(false);
+
+setTimeout(() => {
+  setAdIndex((current) => (current + 1) % ads.length);
+  setAdFade(true);
+}, 200);
+  }, 5000);
+
+  return () => clearInterval(interval);
+}, [ads]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -664,6 +760,118 @@ export function HomePage() {
         </div>
       </section>
 
+      {/* Sponsored Advertisements */}
+{currentAd && (
+  <section className="py-6 bg-background border-b border-border">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="flex items-center gap-2 mb-3">
+        <span
+          className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded"
+          style={{ fontWeight: 500 }}
+        >
+          Sponsored
+        </span>
+      </div>
+
+      <div
+        className={`relative rounded-2xl overflow-hidden shadow-md group transition-opacity duration-300 ${
+          adFade ? 'opacity-100' : 'opacity-40'
+        }`}
+      >
+        <div className="relative h-44 sm:h-56">
+          <img
+            src={
+              currentAd.imageUrl ||
+              'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1200&fit=crop'
+            }
+            alt={currentAd.title || 'Advertisement'}
+            className="w-full h-full object-cover transition-all duration-500"
+          />
+
+          <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-transparent" />
+
+          <div className="absolute inset-0 flex items-center px-6 sm:px-10">
+            <div className="max-w-lg">
+              <span
+                className="text-xs px-2.5 py-0.5 rounded-full text-white mb-3 inline-block"
+                style={{
+                  backgroundColor: currentAd.badgeColor || '#C9A84C',
+                  fontWeight: 600,
+                }}
+              >
+                {currentAd.badgeText || 'Sponsored'}
+              </span>
+
+              <h3
+                className="text-white mb-2"
+                style={{ fontWeight: 700, fontSize: '1.35rem' }}
+              >
+                {currentAd.title}
+              </h3>
+
+              <p className="text-white/80 text-sm mb-4">
+                {currentAd.description}
+              </p>
+
+              <a
+                href={currentAd.linkUrl || '#'}
+                onClick={async () => {
+                  try {
+                    await updateDoc(doc(db, "ads", currentAd.id), {
+                      clicks: increment(1),
+                    });
+                  } catch (err) {
+                    console.error(err);
+                  }
+                }}
+                className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 border border-white/40 text-white text-sm px-4 py-2 rounded-lg transition-colors backdrop-blur-sm"
+                style={{ fontWeight: 600 }}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Learn More <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          </div>
+
+          {ads.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={prevAd}
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={nextAd}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 text-white flex items-center justify-center transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                {ads.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setAdIndex(i)}
+                    className={`w-1.5 h-1.5 rounded-full transition-all ${
+                      i === adIndex ? 'bg-white w-4' : 'bg-white/50'
+                    }`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  </section>
+)}
+
       {/* Featured Professionals */}
       <section className="py-16 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -694,7 +902,6 @@ export function HomePage() {
               <TechnicianCard
                 key={tech.id}
                 technician={tech}
-                featured={i === 0}
               />
             ))}
           </div>
@@ -953,6 +1160,48 @@ export function HomePage() {
           )}
         </div>
       </section>
+
+      {/* Buy Me a Coffee */}
+<section className="py-14 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 border-t border-amber-100 dark:border-amber-900/20">
+  <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+    <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
+      <Coffee className="w-7 h-7 text-amber-600" />
+    </div>
+
+    <h2
+      className="text-foreground mb-3"
+      style={{ fontSize: '1.75rem', fontWeight: 700 }}
+    >
+      Buy Us a Coffee ☕
+    </h2>
+
+    <p className="text-muted-foreground mb-2 text-lg">
+      LabourX is built with love for Sri Lanka&apos;s construction community.
+    </p>
+
+    <p className="text-muted-foreground mb-7 text-sm">
+      If our platform helped you find the right professional or grow your
+      business, consider buying us a coffee as a small token of appreciation.
+      Every cup keeps us going!
+    </p>
+
+    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+      <Link
+        to="/donate"
+        className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-8 py-3 rounded-xl transition-colors shadow-md"
+        style={{ fontWeight: 700 }}
+      >
+        <Coffee className="w-5 h-5" />
+        Buy Us a Coffee
+      </Link>
+    </div>
+
+    <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+      <Heart className="w-3.5 h-3.5 text-red-400" />
+      <span>Every contribution is deeply appreciated by our small team</span>
+    </div>
+  </div>
+</section>
 
       {/* Join CTA */}
       <section className="py-14 bg-maroon-light border-t border-maroon/10">
