@@ -2,6 +2,8 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from './config';
 
+export type UserRole = 'user' | 'technician' | 'admin';
+
 type RegisterFormData = {
   name: string;
   email: string;
@@ -114,6 +116,10 @@ export async function registerUser(
       education: [],
       projects: [],
       isVerified: false,
+      isBoosted: false,
+      boostBadge: '',
+      boostPlan: '',
+      boostExpiresAt: null,
       website: '',
     });
   }

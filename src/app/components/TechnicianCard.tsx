@@ -7,6 +7,7 @@ import {
   CheckCircle,
   Clock,
   Bookmark,
+  TrendingUp,
 } from 'lucide-react';
 import {
   doc,
@@ -130,21 +131,40 @@ export function TechnicianCard({
     technician.location || technician.city || 'Location not specified';
   const safeExperience = Number(technician.yearsExperience || 0);
   const safeCompletedProjects = Number(technician.completedProjects || 0);
+  const boostStatus = String((technician as any).boostStatus || '').toLowerCase();
+  const boostExpiresAt = (technician as any).boostExpiresAt || null;
+
+  const isBoostNotExpired =
+  !boostExpiresAt ||
+  String(boostExpiresAt).toLowerCase() === 'null' ||
+  new Date(boostExpiresAt).getTime() > Date.now();
+
+  const isBoosted =
+    Boolean((technician as any).isBoosted) &&
+    boostStatus === 'active' &&
+    isBoostNotExpired;
+
+  const boostBadge = (technician as any).boostBadge || '';
 
   return (
     <div
       className={`relative bg-card border border-border rounded-xl overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 ${
-        featured ? 'ring-2 ring-gold' : ''
+        isBoosted ? 'ring-2 ring-gold' : ''
       }`}
     >
-      {featured && (
-        <div
-          className="bg-gold text-white text-xs text-center py-1 px-2"
-          style={{ fontWeight: 600 }}
-        >
-          ⭐ Featured Professional
-        </div>
-      )}
+      {isBoosted && (
+  <div
+    className="bg-gold text-white text-xs text-center py-1 px-2 flex items-center justify-center gap-1"
+    style={{ fontWeight: 600 }}
+  >
+    <TrendingUp className="w-3.5 h-3.5" />
+    {boostBadge === 'Top'
+      ? 'Top Professional'
+      : boostBadge === 'Verified'
+      ? 'Verified Professional'
+      : 'Featured Professional'}
+  </div>
+)}
 
       {isClient && (
         <button
@@ -153,8 +173,9 @@ export function TechnicianCard({
           disabled={bookmarkLoading}
           title={isBookmarked ? 'Remove bookmark' : 'Save professional'}
           aria-label={isBookmarked ? 'Remove bookmark' : 'Save professional'}
-          className={`absolute left-3 z-10 p-2 rounded-full border ...
-${featured ? 'top-10' : 'top-3'} ${
+          className={`absolute left-3 z-10 p-2 rounded-full border ${
+            isBoosted ? 'top-10' : 'top-3'
+          } ${
             isBookmarked
               ? 'bg-gold text-white border-gold shadow-md'
               : 'bg-white/90 text-maroon border-border hover:bg-maroon-light'

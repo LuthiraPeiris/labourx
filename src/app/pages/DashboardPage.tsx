@@ -19,6 +19,8 @@ import {
   CalendarDays,
   ClipboardList,
   Sparkles,
+  Award,
+  TrendingUp,
 } from 'lucide-react';
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 
@@ -360,11 +362,15 @@ function TechnicianDashboard({ user }: { user: AppUser }) {
                     </Link>
 
                     <Link
-                      to="/posts"
+                      to={`/boost-payment?type=profile&name=${encodeURIComponent(
+                        `${dashboardUser.name || 'My Profile'} – ${
+                          dashboardUser.specialty || 'Professional'
+                        }`
+                      )}`}
                       className="inline-flex items-center gap-2 bg-gold hover:bg-gold-dark text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors"
                     >
-                      <Zap className="w-4 h-4" />
-                      Find Jobs
+                      <TrendingUp className="w-4 h-4" />
+                      Boost Profile
                     </Link>
                   </div>
                 </div>

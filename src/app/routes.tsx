@@ -18,6 +18,16 @@ import { MyProjectsPage } from './pages/MyProjectsPage';
 import { NearbyMapPage } from './pages/NearbyMapPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
+import { AdminLayout } from './pages/admin/AdminLayout';
+import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
+import { AdminAdsPage } from './pages/admin/AdminAdsPage';
+import { AdminBoostsPage } from './pages/admin/AdminBoostsPage';
+
+import { BoostPaymentPage } from './pages/BoostPaymentPage';
+import { DonationPage } from './pages/DonationPage';
+import { AdminLoginPage } from './pages/AdminLoginPage';
+import { AdminDonationsPage } from './pages/admin/AdminDonationsPage';
+
 function RootLayout() {
   return (
     <div className="flex flex-col min-h-screen">
@@ -42,26 +52,64 @@ export const router = createBrowserRouter([
       { path: 'posts/:id', element: <PostDetailPage /> },
 
       {
-        element: <ProtectedRoute />,
-        children: [
-          { path: 'dashboard', element: <DashboardPage /> },
-          { path: 'profile', element: <ProfilePage /> },
-          { path: 'my-projects', element: <MyProjectsPage /> },
-          { path: 'nearby', element: <NearbyMapPage /> },
-          { path: 'posts/create', element: <CreatePostPage /> },
-          { path: 'posts/:id/edit', element: <EditPostPage /> },
-        ],
-      },
+      element: <ProtectedRoute />,
+      children: [
+        { path: 'dashboard', element: <DashboardPage /> },
+        { path: 'user-dashboard', element: <DashboardPage /> },
+        { path: 'professional-dashboard', element: <DashboardPage /> },
+        { path: 'profile', element: <ProfilePage /> },
+        { path: 'my-projects', element: <MyProjectsPage /> },
+        { path: 'nearby', element: <NearbyMapPage /> },
+        { path: 'posts/create', element: <CreatePostPage /> },
+        { path: 'posts/:id/edit', element: <EditPostPage /> },
+      ],
+    },
 
       { path: '*', element: <NotFoundPage /> },
     ],
   },
+
+  {
+    path: '/admin',
+    element: <AdminLayout />,
+    children: [
+      { index: true, element: <AdminDashboardPage /> },
+      { path: 'ads', element: <AdminAdsPage /> },
+      { path: 'boosts', element: <AdminBoostsPage /> },
+      { path: 'donations', element: <AdminDonationsPage /> },
+    ],
+  },
+
+  {
+    path: '/boost-payment',
+    element: <BoostPaymentPage />,
+  },
+
+  {
+    path: '/donate',
+    element: <DonationPage />,
+  },
+
   {
     path: '/login',
     element: <LoginPage />,
   },
+
   {
-    path: '/register',
-    element: <RegisterPage />,
+    path: '/admin-login',
+    element: <AdminLoginPage />,
   },
+
+  {
+  path: '/register',
+  element: <RegisterPage />,
+},
+{
+  path: '/register-user',
+  element: <RegisterPage fixedRole="user" />,
+},
+{
+  path: '/register-professional',
+  element: <RegisterPage fixedRole="technician" />,
+},
 ]);

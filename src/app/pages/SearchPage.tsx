@@ -92,6 +92,10 @@ export function SearchPage() {
               completedProjects: Number(data.completedProjects || 0),
               joinedAt: data.joinedAt || '',
               isVerified: Boolean(data.isVerified || false),
+              isBoosted: Boolean(data.isBoosted || false),
+              boostBadge: data.boostBadge || '',
+              boostPlan: data.boostPlan || '',
+              boostStatus: data.boostStatus || '',
               website: data.website || '',
               locationText: data.locationText || '',
               lat: typeof data.lat === 'number' ? data.lat : Number(data.lat || 0),
@@ -179,24 +183,44 @@ export function SearchPage() {
     }
 
     filtered.sort((a, b) => {
-      if (sortBy === 'rating') {
-        return Number(b.rating || 0) - Number(a.rating || 0);
-      }
+    const isActiveBoost = (tech: any) => {
+    const isBoosted = Boolean(tech.isBoosted);
+    const boostStatus = String(tech.boostStatus || '').toLowerCase();
+    const boostExpiresAt = tech.boostExpiresAt || null;
 
-      if (sortBy === 'reviews') {
-        return Number((b as any).reviewCount || 0) - Number((a as any).reviewCount || 0);
-      }
+    const isNotExpired =
+      !boostExpiresAt ||
+      String(boostExpiresAt).toLowerCase() === 'null' ||
+      new Date(boostExpiresAt).getTime() > Date.now();
 
-      if (sortBy === 'experience') {
-        return Number(b.yearsExperience || 0) - Number(a.yearsExperience || 0);
-      }
+    return isBoosted && boostStatus === 'active' && isNotExpired;
+  };
 
-      if (sortBy === 'projects') {
-        return Number((b as any).completedProjects || 0) - Number((a as any).completedProjects || 0);
-      }
+  const boostedA = isActiveBoost(a) ? 1 : 0;
+  const boostedB = isActiveBoost(b) ? 1 : 0;
 
-      return 0;
-    });
+  if (boostedB !== boostedA) {
+    return boostedB - boostedA;
+  }
+
+  if (sortBy === 'rating') {
+    return Number(b.rating || 0) - Number(a.rating || 0);
+  }
+
+  if (sortBy === 'reviews') {
+    return Number((b as any).reviewCount || 0) - Number((a as any).reviewCount || 0);
+  }
+
+  if (sortBy === 'experience') {
+    return Number(b.yearsExperience || 0) - Number(a.yearsExperience || 0);
+  }
+
+  if (sortBy === 'projects') {
+    return Number((b as any).completedProjects || 0) - Number((a as any).completedProjects || 0);
+  }
+
+  return 0;
+});
 
     return filtered;
   }, [allTechnicians, query, selectedSpecialty, selectedCity, minRating, availability, sortBy]);
