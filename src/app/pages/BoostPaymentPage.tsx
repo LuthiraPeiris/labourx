@@ -78,6 +78,7 @@ export function BoostPaymentPage() {
   const [searchParams] = useSearchParams();
   const boostType = (searchParams.get('type') as 'profile' | 'post') || 'profile';
   const targetName = searchParams.get('name') || '';
+  const targetId = searchParams.get('targetId') || '';
 
   const plans = boostType === 'profile' ? profilePlans : postPlans;
 
@@ -108,11 +109,16 @@ export function BoostPaymentPage() {
   e.preventDefault();
 
   if (!currentUser) {
-    navigate('/login');
-    return;
-  }
+  navigate('/login');
+  return;
+}
 
-  setLoading(true);
+if (boostType === 'post' && !targetId) {
+  alert('Post information is missing. Please go back and try again.');
+  return;
+}
+
+setLoading(true);
 
   try {
     const paymentRef = `PAY-${Date.now()}`;
@@ -125,7 +131,7 @@ export function BoostPaymentPage() {
 
       type: boostType,
       targetName: targetName || currentUser.name || '',
-      targetId: currentUser.uid,
+      targetId: boostType === 'post' ? targetId : currentUser.uid,
 
       planId: plan.id,
       plan: `${plan.name} (${plan.duration})`,
@@ -161,7 +167,7 @@ export function BoostPaymentPage() {
             Your payment of <span className="text-foreground font-semibold">Rs. {plan.price.toLocaleString()}</span> was received.
           </p>
           <p className="text-muted-foreground text-sm mb-6">
-            Our admin team will review and activate your <strong>{plan.badge}</strong> badge within 24 hours.
+            Our admin team will review and activate your <strong>{plan.badge}</strong> {boostType === 'profile' ? 'profile boost' : 'post boost'} within 24 hours.
           </p>
           <div className="bg-muted/50 rounded-xl p-4 mb-6 text-left">
             <p className="text-xs text-muted-foreground mb-1">Payment Reference</p>

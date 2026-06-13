@@ -76,42 +76,37 @@ export function RegisterPage({ fixedRole }: { fixedRole?: Role }) {
     }));
   };
 
-  const formatHourlyRate = (amount: string, type: WageType) => {
-    const cleanAmount = String(amount || '').trim();
-    if (!cleanAmount || !type) return '';
-
-    const labelMap: Record<Exclude<WageType, ''>, string> = {
-      hourly: 'hour',
-      daily: 'day',
-      project: 'project',
-    };
-
-    return `Rs. ${cleanAmount} per ${labelMap[type]}`;
-  };
-
   const validateStepTwo = () => {
-    if (!form.name.trim() || !form.email.trim() || !form.phone.trim()) {
-      alert('Please fill all required fields');
-      return false;
-    }
+  if (!form.name.trim() || !form.email.trim() || !form.phone.trim()) {
+    alert('Please fill all required fields');
+    return false;
+  }
 
-    if (!form.password || form.password.length < 8) {
-      alert('Password must be at least 8 characters');
-      return false;
-    }
+  if (!form.password || form.password.length < 8) {
+    alert('Password must be at least 8 characters');
+    return false;
+  }
 
-    if (form.age && Number(form.age) < 1) {
-      alert('Please enter a valid age');
-      return false;
-    }
+  if (form.age && Number(form.age) < 1) {
+    alert('Please enter a valid age');
+    return false;
+  }
 
-    if (!form.locationText.trim() || !form.lat.trim() || !form.lng.trim()) {
-      alert('Please search and select a location');
-      return false;
-    }
+  if (role === 'user' && !form.city.trim()) {
+    alert('Please enter your city');
+    return false;
+  }
 
-    return true;
-  };
+  if (
+    role === 'technician' &&
+    (!form.locationText.trim() || !form.lat.trim() || !form.lng.trim())
+  ) {
+    alert('Please search and select a service location');
+    return false;
+  }
+
+  return true;
+};
 
   const validateTechnicianFields = () => {
     if (
@@ -163,28 +158,26 @@ export function RegisterPage({ fixedRole }: { fixedRole?: Role }) {
     setLoading(true);
 
     try {
-      const hourlyRate =
-        role === 'technician'
-          ? formatHourlyRate(form.wageAmount, form.wageType)
-          : '';
-
       const payload = {
-        ...form,
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
         phone: form.phone.trim(),
-        address: form.address.trim(),
-        city: form.city.trim(),
-        specialty: form.specialty.trim(),
-        bio: form.bio.trim(),
+        password: form.password,
+
         age: form.age.trim(),
-        yearsExperience: form.yearsExperience.trim(),
-        wageAmount: form.wageAmount.trim(),
-        wageType: form.wageType,
-        hourlyRate,
-        locationText: form.locationText.trim(),
-        lat: Number(form.lat),
-        lng: Number(form.lng),
+        address: form.address.trim(),
+        city: role === 'technician' ? form.locationText.trim() : form.city.trim(),
+
+        specialty: role === 'technician' ? form.specialty.trim() : '',
+        yearsExperience: role === 'technician' ? form.yearsExperience.trim() : '',
+        bio: role === 'technician' ? form.bio.trim() : '',
+
+        locationText: role === 'technician' ? form.locationText.trim() : '',
+        lat: role === 'technician' ? Number(form.lat) : '',
+        lng: role === 'technician' ? Number(form.lng) : '',
+
+        wageAmount: role === 'technician' ? form.wageAmount.trim() : '',
+        wageType: role === 'technician' ? form.wageType : '',
       };
 
       await registerUser(role, payload);
@@ -219,7 +212,19 @@ if (role === 'technician') {
   return (
     <div className="min-h-screen bg-maroon-light flex items-center justify-center py-12 px-4">
       <button
-        onClick={() => (step === 1 ? navigate(-1) : setStep((s) => s - 1))}
+  onClick={() => {
+    if (fixedRole && step === 2) {
+      navigate(-1);
+      return;
+    }
+
+    if (step === 1) {
+      navigate(-1);
+      return;
+    }
+
+    setStep((s) => s - 1);
+  }}
         className="absolute top-5 left-5 inline-flex items-center gap-1.5 text-maroon hover:text-maroon-dark transition-colors text-sm"
         style={{ fontWeight: 500 }}
       >
@@ -334,12 +339,19 @@ if (role === 'technician') {
             <form onSubmit={handleContinueFromStepTwo}>
               <div className="flex items-center gap-2 mb-5">
                 <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
+  type="button"
+  onClick={() => {
+    if (fixedRole) {
+      navigate(-1);
+      return;
+    }
+
+    setStep(1);
+  }}
+  className="text-muted-foreground hover:text-foreground"
+>
+  <ChevronLeft className="w-5 h-5" />
+</button>
 
                 <div>
                   <h2 className="text-foreground font-semibold">Personal Information</h2>
@@ -350,33 +362,47 @@ if (role === 'technician') {
               </div>
 
               <div className="space-y-4">
-                <div>
-                  <label className={labelClass}>Full Name *</label>
-                  <input
-                    type="text"
-                    value={form.name}
-                    onChange={(e) => update('name', e.target.value)}
-                    placeholder="John Doe"
-                    className={inputClass}
-                    required
-                  />
-                </div>
+                <div className={role === 'user' ? 'grid grid-cols-1 sm:grid-cols-2 gap-4' : 'space-y-4'}>
+  <div>
+    <label className={labelClass}>Full Name *</label>
+    <input
+      type="text"
+      value={form.name}
+      onChange={(e) => update('name', e.target.value)}
+      placeholder="John Doe"
+      className={inputClass}
+      required
+    />
+  </div>
 
-                <div>
-                  <label className={labelClass}>
-                    {role === 'technician' ? 'Service Location *' : 'Location *'}
-                  </label>
-                  <LocationPicker
-                    onLocationChange={handleLocationChange}
-                    initialAddress={form.locationText}
-                    compact={false}
-                  />
-                  {form.locationText && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Selected: {form.locationText}
-                    </p>
-                  )}
-                </div>
+  {role === 'technician' ? (
+    <div>
+      <label className={labelClass}>Service Location *</label>
+      <LocationPicker
+        onLocationChange={handleLocationChange}
+        initialAddress={form.locationText}
+        compact={false}
+      />
+      {form.locationText && (
+        <p className="text-xs text-muted-foreground mt-2">
+          Selected: {form.locationText}
+        </p>
+      )}
+    </div>
+  ) : (
+    <div>
+      <label className={labelClass}>City *</label>
+      <input
+        type="text"
+        value={form.city}
+        onChange={(e) => update('city', e.target.value)}
+        placeholder="Colombo"
+        className={inputClass}
+        required
+      />
+    </div>
+  )}
+</div>
 
                 <div>
                   <label className={labelClass}>Email Address *</label>

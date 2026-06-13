@@ -5,6 +5,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { TechnicianCard } from '../components/TechnicianCard';
 import { db } from '../../firebase/config';
 import { Technician, SPECIALTIES } from '../types';
+import { expireProfileBoostIfNeeded } from '../utils/boostUtils';
 
 const defaultCities = [
   'All Cities',
@@ -104,7 +105,11 @@ export function SearchPage() {
           })
           .filter((user) => normalize((user as any).role) === 'technician');
 
-        setAllTechnicians(technicians);
+        const checkedTechnicians = await Promise.all(
+          technicians.map((tech) => expireProfileBoostIfNeeded(tech))
+        );
+
+        setAllTechnicians(checkedTechnicians);
       } catch (error) {
         console.error('Error fetching technicians:', error);
         setAllTechnicians([]);

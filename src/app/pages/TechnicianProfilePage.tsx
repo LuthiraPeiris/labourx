@@ -35,6 +35,7 @@ import { ReviewCard } from '../components/ReviewCard';
 import { StarRating } from '../components/StarRating';
 import { db } from '../../firebase/config';
 import { useAuth } from '../context/AuthContext';
+import { expireProfileBoostIfNeeded } from '../utils/boostUtils';
 
 type TabType = 'overview' | 'portfolio' | 'education' | 'reviews';
 
@@ -147,7 +148,9 @@ export function TechnicianProfilePage() {
           website: data.website || '',
         };
 
-        setTechnician(techData);
+        const checkedTechData = await expireProfileBoostIfNeeded(techData);
+
+        setTechnician(checkedTechData);
 
         if (currentUser?.role === 'user') {
           const postsSnapshot = await getDocs(collection(db, 'posts'));
@@ -333,15 +336,28 @@ export function TechnicianProfilePage() {
   const boostStatus = String(technician?.boostStatus || '').toLowerCase();
 const boostExpiresAt = technician?.boostExpiresAt || null;
 
-const isBoostNotExpired =
-  !boostExpiresAt || new Date(boostExpiresAt).getTime() > Date.now();
+const getBoostExpiryTime = (value: any) => {
+  if (!value) return null;
 
-const isBoosted =
-  Boolean(technician?.isBoosted) &&
-  boostStatus === 'active' &&
-  isBoostNotExpired;
+  if (value?.toDate) {
+    return value.toDate().getTime();
+  }
 
-const boostBadge = technician?.boostBadge || '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.getTime();
+};
+
+  const boostExpiryTime = getBoostExpiryTime(boostExpiresAt);
+
+  const isBoostNotExpired =
+    !boostExpiryTime || boostExpiryTime > Date.now();
+
+  const isBoosted =
+    Boolean(technician?.isBoosted) &&
+    boostStatus === 'active' &&
+    isBoostNotExpired;
+
+  const boostBadge = technician?.boostBadge || '';
 
   const safeAvailability =
     technician?.availability &&
