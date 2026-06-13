@@ -76,7 +76,7 @@ export function Footer() {
               </li>
               <li className="flex items-start gap-2 text-sm text-muted-foreground">
                 <MapPin className="w-4 h-4 mt-0.5 text-maroon flex-shrink-0" />
-                <span>LabourX HQ, Colombo 03, Sri Lanka</span>
+                <span>LabourX Office, No.4 Room, Liyanage Boarding, Pabahinna, Belihuloya, Sri Lanka</span>
               </li>
             </ul>
           </div>

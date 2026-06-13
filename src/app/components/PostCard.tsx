@@ -1,10 +1,17 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Clock, DollarSign, Users, Tag, Edit } from 'lucide-react';
+import { MapPin, Clock, DollarSign, Users, Tag, Edit, Star } from 'lucide-react';
 import { WorkPost } from '../types';
 import { useAuth } from '../context/AuthContext';
 
+interface BoostedWorkPost extends WorkPost {
+  boostStatus?: string;
+  boostBadge?: string;
+  boostPlan?: string;
+  isBoosted?: boolean;
+}
+
 interface PostCardProps {
-  post: WorkPost;
+  post: BoostedWorkPost;
 }
 
 const categoryColors: Record<string, string> = {
@@ -32,25 +39,52 @@ function formatCurrency(amount: number) {
 export function PostCard({ post }: PostCardProps) {
   const { currentUser } = useAuth();
   const isOwner = currentUser?.uid === post.userId;
+  const isBoosted = post.boostStatus === 'active' || post.isBoosted === true;
 
-  const timeAgo = (dateStr: string) => {
+  const timeAgo = (dateStr?: string) => {
+    if (!dateStr) return '';
+
     const date = new Date(dateStr);
     const now = new Date();
-    const diff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (Number.isNaN(date.getTime())) return '';
+
+    const diff = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
     if (diff === 0) return 'Today';
     if (diff === 1) return 'Yesterday';
     return `${diff} days ago`;
   };
 
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5">
+    <div
+      className={`bg-card border rounded-xl overflow-hidden hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 ${
+        isBoosted
+          ? 'border-gold shadow-md ring-1 ring-gold/20'
+          : 'border-border'
+      }`}
+    >
       {post.images && post.images[0] && (
         <div className="h-40 overflow-hidden relative">
-          <img src={post.images[0]} alt={post.title} className="w-full h-full object-cover" />
+          <img
+            src={post.images[0]}
+            alt={post.title}
+            className="w-full h-full object-cover"
+          />
+
+          {isBoosted && (
+            <div className="absolute top-2 left-2 bg-gold text-white text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-sm">
+              <Star className="w-3 h-3 fill-white" />
+              <span style={{ fontWeight: 700 }}>{post.boostBadge || 'Featured'}</span>
+            </div>
+          )}
+
           {isOwner && (
             <Link
               to={`/posts/${post.id}/edit`}
-              onClick={e => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
               className="absolute top-2 right-2 flex items-center gap-1.5 bg-black/60 hover:bg-maroon text-white text-xs px-2.5 py-1.5 rounded-lg transition-colors"
               style={{ fontWeight: 500 }}
             >
@@ -59,24 +93,49 @@ export function PostCard({ post }: PostCardProps) {
           )}
         </div>
       )}
+
       <div className="p-5">
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex flex-wrap gap-2">
-            <span className={`text-xs px-2 py-0.5 rounded-full ${categoryColors[post.category] || 'bg-muted text-muted-foreground'}`} style={{ fontWeight: 500 }}>
+            {isBoosted && (
+              <span
+                className="text-xs px-2 py-0.5 rounded-full bg-gold/10 text-gold border border-gold/30 flex items-center gap-1"
+                style={{ fontWeight: 700 }}
+              >
+                <Star className="w-3 h-3 fill-gold" />
+                {post.boostBadge || 'Featured'}
+              </span>
+            )}
+
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full ${
+                categoryColors[post.category] || 'bg-muted text-muted-foreground'
+              }`}
+              style={{ fontWeight: 500 }}
+            >
               <Tag className="w-3 h-3 inline mr-1" />
               {post.category}
             </span>
-            <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${statusColors[post.status]}`} style={{ fontWeight: 500 }}>
+
+            <span
+              className={`text-xs px-2 py-0.5 rounded-full capitalize ${
+                statusColors[post.status] || 'bg-muted text-muted-foreground'
+              }`}
+              style={{ fontWeight: 500 }}
+            >
               {post.status}
             </span>
           </div>
+
           <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-xs text-muted-foreground">{timeAgo(post.postedAt)}</span>
-            {/* Edit button for posts without images */}
+            <span className="text-xs text-muted-foreground">
+              {timeAgo(post.postedAt)}
+            </span>
+
             {isOwner && !post.images?.[0] && (
               <Link
                 to={`/posts/${post.id}/edit`}
-                onClick={e => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
                 className="flex items-center gap-1 bg-muted hover:bg-maroon-light border border-border hover:border-maroon/30 text-foreground hover:text-maroon text-xs px-2 py-1 rounded-lg transition-colors"
                 style={{ fontWeight: 500 }}
               >
@@ -86,18 +145,30 @@ export function PostCard({ post }: PostCardProps) {
           </div>
         </div>
 
-        <h3 className="text-card-foreground mb-2 line-clamp-2" style={{ fontWeight: 600 }}>{post.title}</h3>
-        <p className="text-muted-foreground text-sm line-clamp-2 mb-3">{post.description}</p>
+        <h3
+          className="text-card-foreground mb-2 line-clamp-2"
+          style={{ fontWeight: 600 }}
+        >
+          {post.title}
+        </h3>
+
+        <p className="text-muted-foreground text-sm line-clamp-2 mb-3">
+          {post.description}
+        </p>
 
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <DollarSign className="w-3.5 h-3.5 text-gold flex-shrink-0" />
-            <span>{formatCurrency(post.budgetMin)} – {formatCurrency(post.budgetMax)}</span>
+            <span>
+              {formatCurrency(post.budgetMin)} – {formatCurrency(post.budgetMax)}
+            </span>
           </div>
+
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <Clock className="w-3.5 h-3.5 text-maroon flex-shrink-0" />
             <span>{post.timeline}</span>
           </div>
+
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground col-span-2">
             <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="truncate">{post.location}</span>
@@ -105,22 +176,37 @@ export function PostCard({ post }: PostCardProps) {
         </div>
 
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <img
-              src={post.userAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(post.userName)}&background=8B1A2F&color=fff`}
-              alt={post.userName}
-              className="w-7 h-7 rounded-full object-cover"
+              src={
+                post.userAvatar ||
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                  post.userName || 'User'
+                )}&background=8B1A2F&color=fff`
+              }
+              alt={post.userName || 'User'}
+              className="w-7 h-7 rounded-full object-cover flex-shrink-0"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(post.userName)}&background=8B1A2F&color=fff`;
+                (e.target as HTMLImageElement).src =
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                    post.userName || 'User'
+                  )}&background=8B1A2F&color=fff`;
               }}
             />
-            <span className="text-sm text-muted-foreground">{post.userName}</span>
+
+            <span className="text-sm text-muted-foreground truncate">
+              {post.userName}
+            </span>
           </div>
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1 text-sm text-muted-foreground">
               <Users className="w-3.5 h-3.5" />
-              <span>{post.bids.length} {post.bids.length === 1 ? 'bid' : 'bids'}</span>
+              <span>
+                {post.bids?.length || 0} {(post.bids?.length || 0) === 1 ? 'bid' : 'bids'}
+              </span>
             </div>
+
             <Link
               to={`/posts/${post.id}`}
               className="bg-maroon text-white px-3 py-1.5 rounded-lg text-sm hover:bg-maroon-dark transition-colors"

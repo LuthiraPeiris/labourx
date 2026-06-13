@@ -13,6 +13,7 @@ import {
   MousePointerClick,
   BarChart3,
   BadgeCheck,
+  FileText,
 } from 'lucide-react';
 import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 
@@ -114,67 +115,70 @@ export function AdminDashboardPage() {
   }, []);
 
   const stats = useMemo(() => {
-    const activeAds = ads.filter(
-      (ad) => String(ad.status || '').toLowerCase() === 'active'
-    ).length;
+  const activeAds = ads.filter(
+    (ad) => String(ad.status || '').toLowerCase() === 'active'
+  ).length;
 
-    const pendingBoosts = boosts.filter(
-      (boost) => String(boost.status || '').toLowerCase() === 'pending'
-    ).length;
+  const pendingBoosts = boosts.filter(
+    (boost) => String(boost.status || '').toLowerCase() === 'pending'
+  ).length;
 
-    const boostRevenue = boosts
-  .filter(
-    (boost) =>
-      String(boost.paymentStatus || '').toLowerCase() === 'paid'
-  )
-  .reduce(
-    (sum, boost) => sum + Number(boost.amount || 0),
-    0
-  );
+  const profileBoostRevenue = boosts
+    .filter(
+      (boost) =>
+        String(boost.paymentStatus || '').toLowerCase() === 'paid' &&
+        String(boost.type || '').toLowerCase() === 'profile'
+    )
+    .reduce((sum, boost) => sum + Number(boost.amount || 0), 0);
 
-const donationRevenue = donations
-  .filter(
-    (donation) =>
-      String(donation.paymentStatus || '').toLowerCase() === 'paid'
-  )
-  .reduce(
-    (sum, donation) => sum + Number(donation.amount || 0),
-    0
-  );
+  const postBoostRevenue = boosts
+    .filter(
+      (boost) =>
+        String(boost.paymentStatus || '').toLowerCase() === 'paid' &&
+        String(boost.type || '').toLowerCase() === 'post'
+    )
+    .reduce((sum, boost) => sum + Number(boost.amount || 0), 0);
 
-const totalRevenue = boostRevenue + donationRevenue;
+  const donationRevenue = donations
+    .filter(
+      (donation) =>
+        String(donation.paymentStatus || '').toLowerCase() === 'paid'
+    )
+    .reduce((sum, donation) => sum + Number(donation.amount || 0), 0);
 
-    return [
-      {
-        label: 'Active Ads',
-        value: loading ? '...' : String(activeAds),
-        icon: Megaphone,
-        color: 'bg-blue-50 text-blue-600',
-        border: 'border-blue-100',
-      },
-      {
-        label: 'Pending Boosts',
-        value: loading ? '...' : String(pendingBoosts),
-        icon: TrendingUp,
-        color: 'bg-amber-50 text-amber-600',
-        border: 'border-amber-100',
-      },
-      {
-        label: 'Total Revenue',
-        value: loading ? '...' : `Rs. ${totalRevenue.toLocaleString()}`,
-        icon: DollarSign,
-        color: 'bg-green-50 text-green-600',
-        border: 'border-green-100',
-      },
-      {
-        label: 'Active Users',
-        value: loading ? '...' : String(users.length),
-        icon: Users,
-        color: 'bg-purple-50 text-purple-600',
-        border: 'border-purple-100',
-      },
-    ];
-  }, [ads, boosts, donations, users, loading]);
+  const totalRevenue = profileBoostRevenue + postBoostRevenue + donationRevenue;
+
+  return [
+    {
+      label: 'Active Ads',
+      value: loading ? '...' : String(activeAds),
+      icon: Megaphone,
+      color: 'bg-blue-50 text-blue-600',
+      border: 'border-blue-100',
+    },
+    {
+      label: 'Pending Boosts',
+      value: loading ? '...' : String(pendingBoosts),
+      icon: TrendingUp,
+      color: 'bg-amber-50 text-amber-600',
+      border: 'border-amber-100',
+    },
+    {
+      label: 'Total Revenue',
+      value: loading ? '...' : `Rs. ${totalRevenue.toLocaleString()}`,
+      icon: DollarSign,
+      color: 'bg-green-50 text-green-600',
+      border: 'border-green-100',
+    },
+    {
+      label: 'Active Users',
+      value: loading ? '...' : String(users.length),
+      icon: Users,
+      color: 'bg-purple-50 text-purple-600',
+      border: 'border-purple-100',
+    },
+  ];
+}, [ads, boosts, donations, users, loading]);
 
   const recentBoosts = boosts.slice(0, 4).map((boost) => ({
     id: boost.id,
@@ -207,12 +211,27 @@ const totalRevenue = boostRevenue + donationRevenue;
   const averageCtr =
     totalAdViews > 0 ? ((totalAdClicks / totalAdViews) * 100).toFixed(1) : '0.0';
 
-  const boostRevenue = boosts
-    .filter((boost) => String(boost.paymentStatus || '').toLowerCase() === 'paid')
+  const profileBoostRevenue = boosts
+    .filter(
+      (boost) =>
+        String(boost.paymentStatus || '').toLowerCase() === 'paid' &&
+        String(boost.type || '').toLowerCase() === 'profile'
+    )
+    .reduce((sum, boost) => sum + Number(boost.amount || 0), 0);
+
+  const postBoostRevenue = boosts
+    .filter(
+      (boost) =>
+        String(boost.paymentStatus || '').toLowerCase() === 'paid' &&
+        String(boost.type || '').toLowerCase() === 'post'
+    )
     .reduce((sum, boost) => sum + Number(boost.amount || 0), 0);
 
   const donationRevenue = donations
-    .filter((donation) => String(donation.paymentStatus || '').toLowerCase() === 'paid')
+    .filter(
+      (donation) =>
+        String(donation.paymentStatus || '').toLowerCase() === 'paid'
+    )
     .reduce((sum, donation) => sum + Number(donation.amount || 0), 0);
 
   const activeBoostedProfessionals = users.filter(
@@ -220,6 +239,12 @@ const totalRevenue = boostRevenue + donationRevenue;
       String(user.role || '').toLowerCase() === 'technician' &&
       user.isBoosted === true &&
       String(user.boostStatus || '').toLowerCase() === 'active'
+  ).length;
+
+  const activeBoostedPosts = posts.filter(
+    (post) =>
+      post.isBoosted === true &&
+      String(post.boostStatus || '').toLowerCase() === 'active'
   ).length;
 
   return [
@@ -230,22 +255,22 @@ const totalRevenue = boostRevenue + donationRevenue;
       color: 'bg-blue-50 text-blue-600',
     },
     {
-      label: 'Ad Clicks',
-      value: loading ? '...' : totalAdClicks.toLocaleString(),
-      icon: MousePointerClick,
-      color: 'bg-indigo-50 text-indigo-600',
-    },
-    {
       label: 'Average CTR',
       value: loading ? '...' : `${averageCtr}%`,
       icon: BarChart3,
       color: 'bg-purple-50 text-purple-600',
     },
     {
-      label: 'Boost Revenue',
-      value: loading ? '...' : `Rs. ${boostRevenue.toLocaleString()}`,
-      icon: TrendingUp,
-      color: 'bg-gold/10 text-gold',
+      label: 'Profile Boost Revenue',
+      value: loading ? '...' : `Rs. ${profileBoostRevenue.toLocaleString()}`,
+      icon: BadgeCheck,
+      color: 'bg-green-50 text-green-600',
+    },
+    {
+      label: 'Post Boost Revenue',
+      value: loading ? '...' : `Rs. ${postBoostRevenue.toLocaleString()}`,
+      icon: FileText,
+      color: 'bg-indigo-50 text-indigo-600',
     },
     {
       label: 'Donation Revenue',
@@ -254,30 +279,47 @@ const totalRevenue = boostRevenue + donationRevenue;
       color: 'bg-amber-50 text-amber-600',
     },
     {
-      label: 'Boosted Pros',
-      value: loading ? '...' : String(activeBoostedProfessionals),
-      icon: BadgeCheck,
-      color: 'bg-green-50 text-green-600',
+      label: 'Boosted Posts',
+      value: loading ? '...' : String(activeBoostedPosts),
+      icon: TrendingUp,
+      color: 'bg-gold/10 text-gold',
     },
   ];
-}, [ads, boosts, donations, users, loading]);
+}, [ads, boosts, donations, users, posts, loading]);
 
 const chartData = useMemo(() => {
-  const boostRevenue = boosts
-    .filter((boost) => String(boost.paymentStatus || '').toLowerCase() === 'paid')
+  const profileBoostRevenue = boosts
+    .filter(
+      (boost) =>
+        String(boost.paymentStatus || '').toLowerCase() === 'paid' &&
+        String(boost.type || '').toLowerCase() === 'profile'
+    )
+    .reduce((sum, boost) => sum + Number(boost.amount || 0), 0);
+
+  const postBoostRevenue = boosts
+    .filter(
+      (boost) =>
+        String(boost.paymentStatus || '').toLowerCase() === 'paid' &&
+        String(boost.type || '').toLowerCase() === 'post'
+    )
     .reduce((sum, boost) => sum + Number(boost.amount || 0), 0);
 
   const donationRevenue = donations
-    .filter((donation) => String(donation.paymentStatus || '').toLowerCase() === 'paid')
+    .filter(
+      (donation) =>
+        String(donation.paymentStatus || '').toLowerCase() === 'paid'
+    )
     .reduce((sum, donation) => sum + Number(donation.amount || 0), 0);
 
   const totalAdViews = ads.reduce((sum, ad) => sum + Number(ad.views || 0), 0);
   const totalAdClicks = ads.reduce((sum, ad) => sum + Number(ad.clicks || 0), 0);
 
   return {
-    boostRevenue,
+    profileBoostRevenue,
+    postBoostRevenue,
+    boostRevenue: profileBoostRevenue + postBoostRevenue,
     donationRevenue,
-    totalRevenue: boostRevenue + donationRevenue,
+    totalRevenue: profileBoostRevenue + postBoostRevenue + donationRevenue,
     totalAdViews,
     totalAdClicks,
   };
@@ -384,39 +426,7 @@ const platformHealth = useMemo(() => {
   ].slice(0, 6);
 }, [users, boosts, ads, donations]);
 
-<div className="bg-white border border-gray-200 rounded-xl">
 
-  <div className="divide-y divide-gray-50">
-    {recentActivity.length === 0 ? (
-      <div className="px-4 py-6 text-center text-sm text-gray-400">
-        No recent activity yet.
-      </div>
-    ) : (
-      recentActivity.map((activity) => (
-        <div
-          key={activity.id}
-          className="flex items-start justify-between gap-4 px-4 py-3"
-        >
-          <div>
-            <p
-              className="text-gray-800 text-sm"
-              style={{ fontWeight: 600 }}
-            >
-              {activity.title}
-            </p>
-            <p className="text-gray-500 text-xs mt-0.5">
-              {activity.description}
-            </p>
-          </div>
-
-          <span className="text-xs text-gray-400 flex-shrink-0">
-            {activity.date}
-          </span>
-        </div>
-      ))
-    )}
-  </div>
-</div>
 
   const recentDonations = donations
   .filter(
@@ -486,9 +496,9 @@ const platformHealth = useMemo(() => {
     <div className="space-y-4">
       <div>
         <div className="flex items-center justify-between text-sm mb-1">
-          <span className="text-gray-600">Boost Revenue</span>
+          <span className="text-gray-600">Profile Boost Revenue</span>
           <span className="text-gray-900" style={{ fontWeight: 700 }}>
-            Rs. {chartData.boostRevenue.toLocaleString()}
+            Rs. {chartData.profileBoostRevenue.toLocaleString()}
           </span>
         </div>
 
@@ -498,7 +508,28 @@ const platformHealth = useMemo(() => {
             style={{
               width:
                 chartData.totalRevenue > 0
-                  ? `${(chartData.boostRevenue / chartData.totalRevenue) * 100}%`
+                  ? `${(chartData.profileBoostRevenue / chartData.totalRevenue) * 100}%`
+                  : '0%'
+            }}
+          />
+        </div>
+      </div>
+
+            <div>
+        <div className="flex items-center justify-between text-sm mb-1">
+          <span className="text-gray-600">Post Boost Revenue</span>
+          <span className="text-gray-900" style={{ fontWeight: 700 }}>
+            Rs. {chartData.postBoostRevenue.toLocaleString()}
+          </span>
+        </div>
+
+        <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
+          <div
+            className="h-full bg-indigo-500 rounded-full"
+            style={{
+              width:
+                chartData.totalRevenue > 0
+                  ? `${(chartData.postBoostRevenue / chartData.totalRevenue) * 100}%`
                   : '0%',
             }}
           />
@@ -580,107 +611,6 @@ const platformHealth = useMemo(() => {
   </div>
 </div>
 
-<div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-  {/* Revenue Breakdown */}
-  <div className="bg-white border border-gray-200 rounded-xl p-5">
-    <h3 className="text-gray-800 mb-4" style={{ fontWeight: 700 }}>
-      Revenue Breakdown
-    </h3>
-
-    <div className="space-y-4">
-      <div>
-        <div className="flex items-center justify-between text-sm mb-1">
-          <span className="text-gray-600">Boost Revenue</span>
-          <span className="text-gray-900" style={{ fontWeight: 700 }}>
-            Rs. {chartData.boostRevenue.toLocaleString()}
-          </span>
-        </div>
-
-        <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
-          <div
-            className="h-full bg-gold rounded-full"
-            style={{
-              width:
-                chartData.totalRevenue > 0
-                  ? `${(chartData.boostRevenue / chartData.totalRevenue) * 100}%`
-                  : '0%',
-            }}
-          />
-        </div>
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between text-sm mb-1">
-          <span className="text-gray-600">Donation Revenue</span>
-          <span className="text-gray-900" style={{ fontWeight: 700 }}>
-            Rs. {chartData.donationRevenue.toLocaleString()}
-          </span>
-        </div>
-
-        <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
-          <div
-            className="h-full bg-amber-500 rounded-full"
-            style={{
-              width:
-                chartData.totalRevenue > 0
-                  ? `${(chartData.donationRevenue / chartData.totalRevenue) * 100}%`
-                  : '0%',
-            }}
-          />
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {/* Advertisement Performance */}
-  <div className="bg-white border border-gray-200 rounded-xl p-5">
-    <h3 className="text-gray-800 mb-4" style={{ fontWeight: 700 }}>
-      Advertisement Performance
-    </h3>
-
-    <div className="space-y-4">
-      <div>
-        <div className="flex items-center justify-between text-sm mb-1">
-          <span className="text-gray-600">Views</span>
-          <span className="text-gray-900" style={{ fontWeight: 700 }}>
-            {chartData.totalAdViews.toLocaleString()}
-          </span>
-        </div>
-
-        <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
-          <div
-            className="h-full bg-blue-500 rounded-full"
-            style={{ width: chartData.totalAdViews > 0 ? '100%' : '0%' }}
-          />
-        </div>
-      </div>
-
-      <div>
-        <div className="flex items-center justify-between text-sm mb-1">
-          <span className="text-gray-600">Clicks</span>
-          <span className="text-gray-900" style={{ fontWeight: 700 }}>
-            {chartData.totalAdClicks.toLocaleString()}
-          </span>
-        </div>
-
-        <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
-          <div
-            className="h-full bg-indigo-500 rounded-full"
-            style={{
-              width:
-                chartData.totalAdViews > 0
-                  ? `${Math.min(
-                      (chartData.totalAdClicks / chartData.totalAdViews) * 100,
-                      100
-                    )}%`
-                  : '0%',
-            }}
-          />
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
 <div className="bg-white border border-gray-200 rounded-xl p-5">
   <div className="mb-4">

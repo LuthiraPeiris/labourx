@@ -6,6 +6,7 @@ import { PostCard } from '../components/PostCard';
 import { db } from '../../firebase/config';
 import { SPECIALTIES } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { expirePostBoostIfNeeded } from '../utils/boostUtils';
 
 export function PostsPage() {
   const { currentUser } = useAuth();
@@ -27,14 +28,18 @@ export function PostsPage() {
 
         const snapshot = await getDocs(postsQuery);
 
-        const fetchedPosts = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          bids: doc.data().bids || [],
-          images: doc.data().images || [],
+        const fetchedPosts = snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+          bids: docSnap.data().bids || [],
+          images: docSnap.data().images || [],
         }));
 
-        setPosts(fetchedPosts);
+        const checkedPosts = await Promise.all(
+          fetchedPosts.map((post) => expirePostBoostIfNeeded(post))
+        );
+
+        setPosts(checkedPosts);
       } catch (error) {
         console.error('Error fetching posts:', error);
       } finally {
@@ -45,18 +50,45 @@ export function PostsPage() {
     fetchPosts();
   }, []);
 
-  const filtered = posts.filter(post => {
-    const matchSearch =
-      !search ||
-      post.title?.toLowerCase().includes(search.toLowerCase()) ||
-      post.description?.toLowerCase().includes(search.toLowerCase()) ||
-      post.location?.toLowerCase().includes(search.toLowerCase());
+  const getPostTime = (value: any) => {
+    if (!value) return 0;
 
-    const matchCategory = !selectedCategory || post.category === selectedCategory;
-    const matchStatus = !selectedStatus || post.status === selectedStatus;
+    if (value?.toDate) {
+      return value.toDate().getTime();
+    }
 
-    return matchSearch && matchCategory && matchStatus;
-  });
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+  };
+
+  const filtered = posts
+    .filter((post) => {
+      const searchText = search.toLowerCase();
+
+      const matchSearch =
+        !search ||
+        post.title?.toLowerCase().includes(searchText) ||
+        post.description?.toLowerCase().includes(searchText) ||
+        post.location?.toLowerCase().includes(searchText);
+
+      const matchCategory = !selectedCategory || post.category === selectedCategory;
+      const matchStatus = !selectedStatus || post.status === selectedStatus;
+
+      return matchSearch && matchCategory && matchStatus;
+    })
+    .sort((a, b) => {
+      const aBoosted = a.boostStatus === 'active' && a.isBoosted === true ? 1 : 0;
+      const bBoosted = b.boostStatus === 'active' && b.isBoosted === true ? 1 : 0;
+
+      if (aBoosted !== bBoosted) {
+        return bBoosted - aBoosted;
+      }
+
+      return (
+        getPostTime(b.postedAt || b.createdAt) -
+        getPostTime(a.postedAt || a.createdAt)
+      );
+    });
 
   const clearFilters = () => {
     setSearch('');
@@ -73,9 +105,17 @@ export function PostsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-white" style={{ fontSize: '2rem', fontWeight: 700 }}>Work Posts</h1>
-              <p className="text-white/70 mt-1">Browse projects posted by clients — submit your bid and win work</p>
+              <h1
+                className="text-white"
+                style={{ fontSize: '2rem', fontWeight: 700 }}
+              >
+                Work Posts
+              </h1>
+              <p className="text-white/70 mt-1">
+                Browse projects posted by clients — submit your bid and win work
+              </p>
             </div>
+
             {currentUser?.role === 'user' && (
               <Link
                 to="/posts/create"
@@ -86,6 +126,7 @@ export function PostsPage() {
                 Post a Job
               </Link>
             )}
+
             {!currentUser && (
               <Link
                 to="/register"
@@ -105,29 +146,38 @@ export function PostsPage() {
               <input
                 type="text"
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search posts..."
                 className="flex-1 outline-none text-gray-800 text-sm bg-transparent"
               />
+
               {search && (
-                <button onClick={() => setSearch('')} className="text-gray-400 hover:text-gray-600">
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="text-gray-400 hover:text-gray-600"
+                >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
+
             <select
               value={selectedCategory}
-              onChange={e => setSelectedCategory(e.target.value)}
+              onChange={(e) => setSelectedCategory(e.target.value)}
               className="px-3 py-2.5 rounded-xl border-0 bg-white text-gray-800 text-sm focus:outline-none cursor-pointer"
             >
               <option value="">All Categories</option>
-              {SPECIALTIES.map(s => (
-                <option key={s} value={s}>{s}</option>
+              {SPECIALTIES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
               ))}
             </select>
+
             <select
               value={selectedStatus}
-              onChange={e => setSelectedStatus(e.target.value)}
+              onChange={(e) => setSelectedStatus(e.target.value)}
               className="px-3 py-2.5 rounded-xl border-0 bg-white text-gray-800 text-sm focus:outline-none cursor-pointer"
             >
               <option value="">All Status</option>
@@ -143,20 +193,35 @@ export function PostsPage() {
         {/* Category Tabs */}
         <div className="flex flex-wrap gap-2 mb-6">
           <button
+            type="button"
             onClick={() => setSelectedCategory('')}
-            className={`px-3 py-1.5 rounded-full text-sm transition-colors ${!selectedCategory ? 'bg-maroon text-white' : 'bg-card border border-border text-foreground hover:border-maroon hover:text-maroon'}`}
+            className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
+              !selectedCategory
+                ? 'bg-maroon text-white'
+                : 'bg-card border border-border text-foreground hover:border-maroon hover:text-maroon'
+            }`}
             style={{ fontWeight: 500 }}
           >
             All Posts ({posts.length})
           </button>
-          {SPECIALTIES.slice(0, 6).map(s => {
-            const count = posts.filter(p => p.category === s).length;
+
+          {SPECIALTIES.slice(0, 6).map((s) => {
+            const count = posts.filter((p) => p.category === s).length;
+
             if (count === 0) return null;
+
             return (
               <button
+                type="button"
                 key={s}
-                onClick={() => setSelectedCategory(selectedCategory === s ? '' : s)}
-                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${selectedCategory === s ? 'bg-maroon text-white' : 'bg-card border border-border text-foreground hover:border-maroon hover:text-maroon'}`}
+                onClick={() =>
+                  setSelectedCategory(selectedCategory === s ? '' : s)
+                }
+                className={`px-3 py-1.5 rounded-full text-sm transition-colors ${
+                  selectedCategory === s
+                    ? 'bg-maroon text-white'
+                    : 'bg-card border border-border text-foreground hover:border-maroon hover:text-maroon'
+                }`}
                 style={{ fontWeight: 500 }}
               >
                 {s} ({count})
@@ -168,10 +233,20 @@ export function PostsPage() {
         {/* Results */}
         <div className="flex items-center justify-between mb-4">
           <p className="text-muted-foreground text-sm">
-            Showing <span className="text-foreground" style={{ fontWeight: 600 }}>{filtered.length}</span> posts
+            Showing{' '}
+            <span className="text-foreground" style={{ fontWeight: 600 }}>
+              {filtered.length}
+            </span>{' '}
+            posts
           </p>
+
           {hasFilters && (
-            <button onClick={clearFilters} className="flex items-center gap-1.5 text-sm text-maroon hover:underline" style={{ fontWeight: 500 }}>
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="flex items-center gap-1.5 text-sm text-maroon hover:underline"
+              style={{ fontWeight: 500 }}
+            >
               <X className="w-3.5 h-3.5" /> Clear filters
             </button>
           )}
@@ -179,23 +254,39 @@ export function PostsPage() {
 
         {loading ? (
           <div className="text-center py-16">
-            <h3 className="text-foreground mb-2" style={{ fontWeight: 600 }}>Loading posts...</h3>
-            <p className="text-muted-foreground text-sm">Please wait a moment</p>
+            <h3 className="text-foreground mb-2" style={{ fontWeight: 600 }}>
+              Loading posts...
+            </h3>
+            <p className="text-muted-foreground text-sm">
+              Please wait a moment
+            </p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
               <Filter className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h3 className="text-foreground mb-2" style={{ fontWeight: 600 }}>No posts found</h3>
-            <p className="text-muted-foreground text-sm mb-4">Try adjusting your search or filters</p>
-            <button onClick={clearFilters} className="bg-maroon text-white px-4 py-2 rounded-lg text-sm hover:bg-maroon-dark transition-colors" style={{ fontWeight: 500 }}>
+
+            <h3 className="text-foreground mb-2" style={{ fontWeight: 600 }}>
+              No posts found
+            </h3>
+
+            <p className="text-muted-foreground text-sm mb-4">
+              Try adjusting your search or filters
+            </p>
+
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="bg-maroon text-white px-4 py-2 rounded-lg text-sm hover:bg-maroon-dark transition-colors"
+              style={{ fontWeight: 500 }}
+            >
               Clear Filters
             </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filtered.map(post => (
+            {filtered.map((post) => (
               <PostCard key={post.id} post={post} />
             ))}
           </div>
@@ -204,9 +295,16 @@ export function PostsPage() {
         {/* CTA for professionals */}
         {currentUser?.role === 'technician' && (
           <div className="mt-10 bg-maroon-light border border-maroon/20 rounded-xl p-6 text-center">
-            <h3 className="text-foreground mb-2" style={{ fontWeight: 600 }}>Find Projects That Match Your Skills</h3>
-            <p className="text-muted-foreground text-sm mb-4">Browse open projects and submit competitive bids to win work from clients in your area.</p>
-            <p className="text-maroon text-sm" style={{ fontWeight: 500 }}>Click on any post above to view details and submit your bid!</p>
+            <h3 className="text-foreground mb-2" style={{ fontWeight: 600 }}>
+              Find Projects That Match Your Skills
+            </h3>
+            <p className="text-muted-foreground text-sm mb-4">
+              Browse open projects and submit competitive bids to win work from
+              clients in your area.
+            </p>
+            <p className="text-maroon text-sm" style={{ fontWeight: 500 }}>
+              Click on any post above to view details and submit your bid!
+            </p>
           </div>
         )}
       </div>

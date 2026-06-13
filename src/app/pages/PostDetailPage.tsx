@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import {
   ArrowLeft, MapPin, Clock, DollarSign, Users, Calendar, Tag,
-  Star, CheckCircle, Send, AlertCircle, ChevronDown, ChevronUp, Edit
+  Star, CheckCircle, Send, AlertCircle, ChevronDown, ChevronUp, Edit,
+  TrendingUp
 } from 'lucide-react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useAuth } from '../context/AuthContext';
 import { Bid } from '../types';
+import { expirePostBoostIfNeeded } from '../utils/boostUtils';
 
 function formatCurrency(amount: number) {
   if (amount >= 1000000) return `Rs. ${(amount / 1000000).toFixed(1)} Mn`;
@@ -49,35 +51,37 @@ export function PostDetailPage() {
     const postRef = doc(db, 'posts', id);
 
     const unsubscribe = onSnapshot(
-      postRef,
-      (postSnap) => {
-        if (postSnap.exists()) {
-          const postData = {
-            id: postSnap.id,
-            ...postSnap.data(),
-            bids: postSnap.data().bids || [],
-            images: postSnap.data().images || [],
-          };
+  postRef,
+  async (postSnap) => {
+    if (postSnap.exists()) {
+      const postData = {
+        id: postSnap.id,
+        ...postSnap.data(),
+        bids: postSnap.data().bids || [],
+        images: postSnap.data().images || [],
+      };
 
-          setPost(postData);
-          setBids(postData.bids || []);
+      const checkedPost = await expirePostBoostIfNeeded(postData);
 
-          if (currentUser?.uid) {
-            const alreadySubmitted = (postData.bids || []).some(
-              (b: Bid) => b.technicianId === currentUser.uid
-            );
-            setBidSubmitted(alreadySubmitted);
-          } else {
-            setBidSubmitted(false);
-          }
-        } else {
-          setPost(null);
-          setBids([]);
-          setBidSubmitted(false);
-        }
+      setPost(checkedPost);
+      setBids(checkedPost.bids || []);
 
-        setLoading(false);
-      },
+      if (currentUser?.uid) {
+        const alreadySubmitted = (checkedPost.bids || []).some(
+          (b: Bid) => b.technicianId === currentUser.uid
+        );
+        setBidSubmitted(alreadySubmitted);
+      } else {
+        setBidSubmitted(false);
+      }
+    } else {
+      setPost(null);
+      setBids([]);
+      setBidSubmitted(false);
+    }
+
+    setLoading(false);
+  },
       (error) => {
         console.error('Error loading post:', error);
         setPost(null);
@@ -236,14 +240,39 @@ export function PostDetailPage() {
               </div>
               <h1 className="text-foreground mb-3" style={{ fontSize: '1.5rem', fontWeight: 700 }}>{post.title}</h1>
               {isPostOwner && (
-                <Link
-                  to={`/posts/${post.id}/edit`}
-                  className="inline-flex items-center gap-1.5 mb-4 text-sm border border-border hover:border-maroon/40 text-foreground hover:text-maroon px-3 py-1.5 rounded-lg transition-colors bg-muted/50"
-                  style={{ fontWeight: 500 }}
-                >
-                  <Edit className="w-3.5 h-3.5" /> Edit This Post
-                </Link>
-              )}
+  <div className="flex flex-wrap items-center gap-2 mb-4">
+    <Link
+      to={`/posts/${post.id}/edit`}
+      className="inline-flex items-center gap-1.5 text-sm border border-border hover:border-maroon/40 text-foreground hover:text-maroon px-3 py-1.5 rounded-lg transition-colors bg-muted/50"
+      style={{ fontWeight: 500 }}
+    >
+      <Edit className="w-3.5 h-3.5" /> Edit This Post
+    </Link>
+
+    {post.status !== 'closed' && post.boostStatus !== 'active' && (
+      <button
+        onClick={() =>
+          navigate(
+            `/boost-payment?type=post&targetId=${post.id}&name=${encodeURIComponent(post.title)}`
+          )
+        }
+        className="inline-flex items-center gap-1.5 text-sm bg-gold hover:bg-gold-dark text-white px-3 py-1.5 rounded-lg transition-colors"
+        style={{ fontWeight: 600 }}
+      >
+        <TrendingUp className="w-3.5 h-3.5" /> Boost This Post
+      </button>
+    )}
+
+    {post.boostStatus === 'active' && (
+      <span
+        className="inline-flex items-center gap-1.5 text-sm bg-gold/10 text-gold border border-gold/30 px-3 py-1.5 rounded-lg"
+        style={{ fontWeight: 600 }}
+      >
+        <Star className="w-3.5 h-3.5" /> Boosted
+      </span>
+    )}
+  </div>
+)}
               <p className="text-muted-foreground leading-relaxed mb-5">{post.description}</p>
 
               {post.images && post.images.length > 0 && (

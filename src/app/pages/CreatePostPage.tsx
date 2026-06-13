@@ -168,9 +168,9 @@ export function CreatePostPage() {
       console.error('Error creating post:', error);
 
       if (error?.code?.includes('storage')) {
-        alert('Image upload failed. Please check Firebase Storage rules and try again.');
+        alert(`Image upload failed: ${error.code}`);
       } else {
-        alert('Failed to publish post. Please try again.');
+        alert(`Failed to publish post: ${error.message || 'Please try again.'}`);
       }
     } finally {
       setLoading(false);

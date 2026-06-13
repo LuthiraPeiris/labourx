@@ -234,6 +234,44 @@ export function AdminBoostsPage() {
       });
     }
 
+    if (action === 'approved' && boost.type === 'post' && boost.targetId) {
+      const oldPostBoostsQuery = query(
+        collection(db, 'boostRequests'),
+        where('targetId', '==', boost.targetId),
+        where('type', '==', 'post'),
+        where('status', '==', 'approved')
+      );
+
+      const oldPostBoostsSnapshot = await getDocs(oldPostBoostsQuery);
+
+      deactivatedOldBoostIds = oldPostBoostsSnapshot.docs
+        .filter((docSnap) => docSnap.id !== boost.id)
+        .map((docSnap) => docSnap.id);
+
+      await Promise.all(
+        deactivatedOldBoostIds.map((oldBoostId) =>
+          updateDoc(doc(db, 'boostRequests', oldBoostId), {
+            status: 'deactivated',
+            deactivatedAt: new Date().toISOString(),
+            deactivationReason: 'Replaced by newer post boost',
+          })
+        )
+      );
+
+      await setDoc(
+        doc(db, 'posts', boost.targetId),
+        {
+          isBoosted: true,
+          boostBadge: boost.badge,
+          boostPlan: boost.plan,
+          boostStatus: 'active',
+          boostApprovedAt: new Date().toISOString(),
+          boostExpiresAt: calculateBoostExpiry(boost.plan),
+        },
+        { merge: true }
+      );
+    }
+
     setBoosts((prev) =>
       prev.map((b) => {
         if (b.id === boost.id) {
@@ -254,13 +292,14 @@ export function AdminBoostsPage() {
 };
 
   const handleDeactivateBoost = async (boost: BoostRequest) => {
-    const confirmed = window.confirm(
-      'Deactivate this professional boost? The request will stay, but the user will no longer be boosted.'
-    );
+  const confirmed = window.confirm(
+    `Deactivate this ${boost.type === 'profile' ? 'professional' : 'post'} boost?`
+  );
 
-    if (!confirmed) return;
+  if (!confirmed) return;
 
-    try {
+  try {
+    if (boost.type === 'profile') {
       await setDoc(
         doc(db, 'users', boost.targetId),
         {
@@ -273,22 +312,38 @@ export function AdminBoostsPage() {
         },
         { merge: true }
       );
-
-      await updateDoc(doc(db, 'boostRequests', boost.id), {
-        status: 'deactivated',
-        deactivatedAt: new Date().toISOString(),
-      });
-
-      setBoosts((prev) =>
-        prev.map((item) =>
-          item.id === boost.id ? { ...item, status: 'deactivated' } : item
-        )
-      );
-    } catch (error) {
-      console.error('Error deactivating boost:', error);
-      alert('Failed to deactivate boost.');
     }
-  };
+
+    if (boost.type === 'post') {
+      await setDoc(
+        doc(db, 'posts', boost.targetId),
+        {
+          isBoosted: false,
+          boostBadge: '',
+          boostPlan: '',
+          boostStatus: 'inactive',
+          boostExpiresAt: null,
+          boostDeactivatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+    }
+
+    await updateDoc(doc(db, 'boostRequests', boost.id), {
+      status: 'deactivated',
+      deactivatedAt: new Date().toISOString(),
+    });
+
+    setBoosts((prev) =>
+      prev.map((item) =>
+        item.id === boost.id ? { ...item, status: 'deactivated' } : item
+      )
+    );
+  } catch (error) {
+    console.error('Error deactivating boost:', error);
+    alert('Failed to deactivate boost.');
+  }
+};
 
   const handleCheckExpiredBoosts = async () => {
   const confirmed = window.confirm('Check and deactivate expired boosts?');
@@ -569,7 +624,7 @@ export function AdminBoostsPage() {
                         </>
                       )}
 
-                      {boost.status === 'approved' && boost.type === 'profile' && (
+                      {boost.status === 'approved' && (
                         <button
                           onClick={() => handleDeactivateBoost(boost)}
                           className="px-3 py-1.5 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg text-xs transition-colors"
