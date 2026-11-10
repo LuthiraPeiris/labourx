@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   HardHat,
   User,
@@ -14,12 +14,6 @@ import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../firebase/config';
 
-type LocationState = {
-  from?: {
-    pathname?: string;
-  };
-};
-
 export function LoginPage() {
   const [role, setRole] = useState<'user' | 'technician'>('user');
   const [email, setEmail] = useState('');
@@ -29,28 +23,9 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const from = (location.state as LocationState | null)?.from?.pathname;
 
   const handleBack = () => {
-    // If login page was opened because of a redirect from another route,
-    // going back with -1 can create a loop.
-    // So first try to go to the original safe page if it exists.
-    if (from && from !== '/login') {
-      navigate(from, { replace: true });
-      return;
-    }
-
-    // React Router keeps the stack index here.
-    // This is more reliable than window.history.length.
-    const historyIndex = window.history.state?.idx;
-
-    if (typeof historyIndex === 'number' && historyIndex > 0) {
-      navigate(-1);
-    } else {
-      navigate('/', { replace: true });
-    }
+    navigate('/');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
